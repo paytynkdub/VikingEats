@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VikingEats — Grocery Guide for WWU Students</title>
+
+  <!-- Fonts: Fraunces (display) + DM Sans (body) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;0,700;1,300;1,500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS for the map view -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    /* =====================================================================
+       DESIGN TOKENS — VikingEats / WWU Brand Colors
+       ===================================================================== */
+    :root {
+      /* WWU brand palette */
+      --dark-blue: #003F87;   /* CMYK(100,58,0,21) · rgb(0,63,135)   — ~20% of design */
+      --blue:      #007AC8;   /* CMYK(85,24,0,0)   · rgb(0,122,200)  — ~20% of design */
+      --white:     #ffffff;   /* rgb(255,255,255)                     — ~50% of design */
+
+      /* Derived tints & utility colors */
+      --dark-blue-deep:  #002d63;   /* darker shade for hover states         */
+      --blue-lt:         #d0eaf8;   /* very light blue for subtle backgrounds */
+      --blue-mid:        #005fa0;   /* mid blue for hover on --blue elements  */
+      --off-white:       #f4f7fb;   /* near-white page background             */
+      --warm-white:      #eaf1f9;   /* light blue-tinted warm surface         */
+      --text:            #0a1628;   /* near-black with blue undertone         */
+      --muted:           #5a6a80;   /* muted blue-grey for secondary text     */
+      --gold:            #f5a623;   /* star ratings & price tier              */
+
+      --ebt-bg:    #dbeafe; --ebt-fg:  #1d4ed8;
+      --bulk-bg:   #e0f2fe; --bulk-fg: #0369a1;
+      --disc-bg:   #fef3c7; --disc-fg: #92400e;
+      --open-bg:   #dcfce7; --open-fg: #15803d;
+      --closed-bg: #fee2e2; --closed-fg:#b91c1c;
+      --unknown-bg:#f3f4f6; --unknown-fg:#6b7280;
+
+      --r-sm: 8px; --r-md: 14px; --r-lg: 22px; --r-xl: 32px;
+      --shadow-card:  0 2px 16px rgba(0,63,135,.08), 0 1px 4px rgba(0,63,135,.05);
+      --shadow-hover: 0 8px 32px rgba(0,63,135,.16), 0 2px 8px rgba(0,63,135,.08);
+      --t: .22s cubic-bezier(.4,0,.2,1);
+      --font-d: 'Fraunces', Georgia, serif;
+      --font-b: 'DM Sans', system-ui, sans-serif;
+    }
+
+    /* =====================================================================
+       RESET
+       ===================================================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-b); background: var(--off-white); color: var(--text); line-height: 1.6; }
+    button { cursor: pointer; border: none; background: none; font-family: inherit; }
+    a { color: inherit; text-decoration: none; }
+    img { max-width: 100%; display: block; }
+
+    /* =====================================================================
+       LAYOUT
+       ===================================================================== */
+    .container { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+
+    /* =====================================================================
+       NAV
+       ===================================================================== */
+    nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--dark-blue);
+      border-bottom: 3px solid var(--blue);
+    }
+    .nav-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 20px; max-width: 1240px; margin: 0 auto;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; }
+    .nav-logo-mark {
+      width: 34px; height: 34px; background: var(--blue); border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+    }
+    .nav-logo-text {
+      font-family: var(--font-d); font-size: 1.3rem; font-weight: 500;
+      color: var(--white); letter-spacing: -.02em;
+    }
+    .nav-logo-text span { color: var(--blue); font-style: italic; }
+    .nav-links { display: flex; align-items: center; gap: 4px; }
+    .nav-links a {
+      color: rgba(255,255,255,.75); font-size: .86rem; font-weight: 500;
+      padding: 7px 13px; border-radius: var(--r-sm);
+      transition: background var(--t), color var(--t);
+    }
+    .nav-links a:hover { background: var(--blue); color: var(--white); }
+    .nav-cta { background: var(--blue) !important; color: var(--white) !important; font-weight: 700 !important; }
+    .nav-cta:hover { background: var(--blue-mid) !important; }
+
+    /* =====================================================================
+       HERO
+       ===================================================================== */
+    .hero {
+      background: var(--dark-blue); padding: 64px 20px 72px;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content:''; position:absolute; inset:0; pointer-events:none;
+      background: radial-gradient(ellipse at 72% 50%, rgba(0,122,200,.25) 0%, transparent 60%),
+                  radial-gradient(ellipse at 15% 85%, rgba(0,63,135,.4) 0%, transparent 50%);
+    }
+    .hero-inner {
+      max-width: 1240px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr auto; gap: 48px; align-items: center;
+      position: relative; z-index: 1;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(0,122,200,.2); border: 1px solid rgba(0,122,200,.5);
+      border-radius: 100px; padding: 5px 13px;
+      font-size: .75rem; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--blue-lt); margin-bottom: 18px;
+    }
+    .hero-title {
+      font-family: var(--font-d);
+      font-size: clamp(2.2rem,4.5vw,3.6rem); font-weight: 500;
+      color: var(--white); line-height: 1.12; letter-spacing: -.03em;
+      margin-bottom: 18px;
+    }
+    .hero-title em { color: var(--blue); font-style: italic; }
+    .hero-sub {
+      color: rgba(255,255,255,.72); font-size: 1rem;
+      max-width: 510px; line-height: 1.65; margin-bottom: 32px;
+    }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 11px 22px; border-radius: var(--r-sm);
+      font-size: .88rem; font-weight: 600; transition: all var(--t);
+    }
+    .btn-primary { background: var(--blue); color: var(--white); }
+    .btn-primary:hover { background: var(--blue-mid); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,122,200,.4); }
+    .btn-outline { border: 1.5px solid rgba(255,255,255,.35); color: var(--white); }
+    .btn-outline:hover { border-color: var(--blue); background: rgba(0,122,200,.15); }
+    .hero-stats { display: flex; flex-direction: column; gap: 14px; }
+    .hero-stat {
+      background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+      border-radius: var(--r-md); padding: 16px 22px; text-align: center; min-width: 118px;
+    }
+    .hero-stat-num { font-family: var(--font-d); font-size: 1.9rem; font-weight: 700; color: var(--blue); line-height: 1; }
+    .hero-stat-label { font-size: .72rem; color: rgba(255,255,255,.6); margin-top: 4px; font-weight: 500; }
+
+    /* =====================================================================
+       TAB BAR — List / Map / Price Compare
+       ===================================================================== */
+    .tab-bar {
+      background: var(--white); border-bottom: 1px solid rgba(0,0,0,.08);
+      position: sticky; top: 62px; z-index: 150;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .tab-bar-inner {
+      max-width: 1240px; margin: 0 auto; padding: 0 20px;
+      display: flex; align-items: center; gap: 0;
+    }
+    .tab-btn {
+      display: flex; align-items: center; gap: 7px;
+      padding: 14px 20px; font-size: .88rem; font-weight: 600;
+      color: var(--muted); border-bottom: 3px solid transparent;
+      transition: color var(--t), border-color var(--t);
+      white-space: nowrap;
+    }
+    .tab-btn:hover { color: var(--dark-blue); }
+    .tab-btn.active { color: var(--dark-blue); border-bottom-color: var(--blue); }
+    .tab-divider { width: 1px; height: 22px; background: rgba(0,0,0,.08); margin: 0 4px; }
+    .tab-spacer { flex: 1; }
+
+    /* =====================================================================
+       QUICK FILTER CHIPS (shared)
+       ===================================================================== */
+    .filter-bar {
+      background: var(--white); border-bottom: 1px solid rgba(0,0,0,.06);
+      padding: 12px 0;
+    }
+    .filter-bar-inner {
+      display: flex; align-items: center; gap: 8px;
+      overflow-x: auto; padding: 0 20px;
+      max-width: 1240px; margin: 0 auto; scrollbar-width: none;
+    }
+    .filter-bar-inner::-webkit-scrollbar { display: none; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 14px; border-radius: 100px;
+      border: 1.5px solid rgba(0,0,0,.11);
+      background: var(--white); color: var(--text);
+      font-size: .8rem; font-weight: 500; white-space: nowrap;
+      transition: all var(--t); flex-shrink: 0;
+    }
+    .chip:hover { border-color: var(--blue); color: var(--blue); }
+    .chip.active { background: var(--dark-blue); border-color: var(--dark-blue); color: var(--white); }
+    .chip-div { width: 1px; height: 20px; background: rgba(0,0,0,.09); flex-shrink: 0; }
+
+    /* =====================================================================
+       VIEW PANELS
+       ===================================================================== */
+    .view-panel { display: none; }
+    .view-panel.active { display: block; }
+
+    /* =====================================================================
+       LIST VIEW — filters + grid
+       ===================================================================== */
+    .list-view { padding: 24px 0 64px; }
+
+    /* Advanced filter panel */
+    .adv-filter-row {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
+    }
+    .adv-filter-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .btn-adv {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: var(--dark-blue); color: var(--white);
+      padding: 9px 16px; border-radius: var(--r-sm);
+      font-size: .83rem; font-weight: 600; transition: background var(--t);
+    }
+    .btn-adv:hover { background: var(--blue); }
+    .search-wrap { position: relative; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+    .search-input {
+      padding: 9px 14px 9px 36px; border: 1.5px solid rgba(0,63,135,.15);
+      border-radius: var(--r-sm); font-family: var(--font-b); font-size: .88rem;
+      background: var(--white); outline: none; transition: border-color var(--t);
+      min-width: 220px;
+    }
+    .search-input:focus { border-color: var(--blue); }
+    .results-count { font-size: .86rem; color: var(--muted); font-weight: 500; }
+
+    .adv-panel {
+      display: none; background: var(--white);
+      border-radius: var(--r-md); padding: 22px;
+      margin-bottom: 20px; box-shadow: var(--shadow-card);
+      border: 1px solid rgba(0,0,0,.07);
+    }
+    .adv-panel.open { display: block; animation: fadeDown .2s ease; }
+    @keyframes fadeDown { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    .fg-label { font-size: .72rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 9px; }
+    .fg { margin-bottom: 18px; }
+    .fg:last-child { margin-bottom: 0; }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .ftag {
+      padding: 5px 13px; border-radius: 100px;
+      border: 1.5px solid rgba(0,63,135,.15); font-size: .78rem; font-weight: 500;
+      background: var(--blue-lt); color: var(--text); transition: all var(--t);
+    }
+    .ftag:hover { border-color: var(--blue); }
+    .ftag.active { background: var(--blue); border-color: var(--blue); color: white; }
+    .adv-actions { display: flex; gap: 9px; margin-top: 18px; }
+    .btn-sm { padding: 8px 16px; font-size: .82rem; }
+    .btn-ghost { border: 1.5px solid rgba(0,63,135,.2); color: var(--muted); border-radius: var(--r-sm); }
+    .btn-ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Store grid */
+    .store-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 20px;
+    }
+    .no-results { grid-column: 1/-1; text-align: center; padding: 56px 20px; color: var(--muted); }
+    .no-results-icon { font-size: 2.8rem; margin-bottom: 10px; }
+    .no-results h3 { font-family: var(--font-d); font-size: 1.3rem; margin-bottom: 6px; color: var(--text); }
+
+    /* =====================================================================
+       STORE CARD
+       ===================================================================== */
+    .store-card {
+      background: var(--white); border-radius: var(--r-lg);
+      box-shadow: var(--shadow-card); border: 1px solid rgba(0,0,0,.06);
+      display: flex; flex-direction: column;
+      transition: transform var(--t), box-shadow var(--t);
+      animation: fadeUp .3s ease both;
+    }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .store-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+
+    .card-stripe { height: 6px; border-radius: var(--r-lg) var(--r-lg) 0 0; }
+    .stripe-budget  { background: linear-gradient(90deg, #16a34a, #4ade80); }
+    .stripe-mid     { background: linear-gradient(90deg, var(--dark-blue), var(--blue)); }
+    .stripe-premium { background: linear-gradient(90deg, var(--gold), #f59e0b); }
+
+    .card-body { padding: 18px 18px 0; flex: 1; }
+    .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .card-name { font-family: var(--font-d); font-size: 1.18rem; font-weight: 500; line-height: 1.2; letter-spacing: -.01em; }
+    .price-tier { display: inline-flex; gap: 1px; flex-shrink: 0; margin-top: 2px; }
+    .price-tier span { font-size: .92rem; color: var(--gold); font-weight: 700; }
+    .price-tier span.dim { color: rgba(0,0,0,.18); }
+    .type-badge {
+      display: inline-block; font-size: .7rem; font-weight: 600;
+      letter-spacing: .05em; text-transform: uppercase;
+      background: var(--blue-lt); color: var(--blue);
+      padding: 3px 9px; border-radius: 100px; margin-bottom: 6px;
+    }
+    .card-addr { display: flex; align-items: center; gap: 4px; font-size: .8rem; color: var(--muted); margin-bottom: 9px; }
+    .card-desc { font-size: .85rem; color: #3a4a5c; line-height: 1.55; margin-bottom: 12px; }
+
+    /* Hours badge */
+    .hours-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 100px; font-size: .74rem; font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .hours-open    { background: var(--open-bg);    color: var(--open-fg); }
+    .hours-closed  { background: var(--closed-bg);  color: var(--closed-fg); }
+    .hours-unknown { background: var(--unknown-bg); color: var(--unknown-fg); }
+    .hours-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .hours-open .hours-dot    { background: var(--open-fg); }
+    .hours-closed .hours-dot  { background: var(--closed-fg); }
+    .hours-unknown .hours-dot { background: var(--unknown-fg); }
+
+    /* Feature badges */
+    .card-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
+    .badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 9px; border-radius: 100px; font-size: .73rem; font-weight: 600; }
+    .badge-ebt  { background: var(--ebt-bg);  color: var(--ebt-fg); }
+    .badge-bulk { background: var(--bulk-bg); color: var(--bulk-fg); }
+    .badge-disc { background: var(--disc-bg); color: var(--disc-fg); }
+
+    /* Food tags */
+    .food-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+    .food-tag { font-size: .71rem; padding: 2px 8px; background: var(--blue-lt); color: var(--blue); border-radius: 100px; font-weight: 500; }
+
+    /* Scores */
+    .card-scores { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-bottom: 13px; }
+    .score-item { background: var(--off-white); border-radius: var(--r-sm); padding: 9px 6px; text-align: center; border: 1px solid rgba(0,63,135,.08); }
+    .score-icon { font-size: 1rem; margin-bottom: 2px; }
+    .score-val { font-family: var(--font-d); font-size: 1.05rem; font-weight: 700; line-height: 1; }
+    .good { color: #16a34a; } .ok { color: #ca8a04; } .poor { color: #dc2626; }
+    .score-lbl { font-size: .63rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+
+    /* Rating */
+    .card-rating { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
+    .stars { display: flex; gap: 1px; }
+    .star { font-size: .9rem; }
+    .star.on { color: var(--gold); } .star.off { color: #d1d5db; }
+    .rating-text { font-size: .8rem; color: var(--muted); }
+    .rating-num { font-weight: 700; color: var(--text); }
+
+    /* Transit panel (expandable) */
+    .transit-panel {
+      background: #f0f9ff; border: 1px solid #bae6fd;
+      border-radius: var(--r-sm); padding: 12px 14px;
+      margin-bottom: 12px; display: none;
+    }
+    .transit-panel.open { display: block; animation: fadeDown .18s ease; }
+    .transit-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #0369a1; margin-bottom: 9px; }
+    .route-item { display: flex; align-items: flex-start; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(3,105,161,.12); }
+    .route-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .route-num {
+      background: #0369a1; color: white; border-radius: 5px;
+      padding: 2px 7px; font-size: .72rem; font-weight: 700; flex-shrink: 0; min-width: 36px; text-align: center;
+    }
+    .route-info { flex: 1; }
+    .route-name { font-size: .8rem; font-weight: 600; color: #0c4a6e; line-height: 1.3; }
+    .route-stops { font-size: .74rem; color: #0369a1; margin-top: 2px; }
+    .route-next { font-size: .73rem; color: #047857; font-weight: 600; margin-top: 3px; }
+    .route-freq { font-size: .7rem; color: var(--muted); }
+    .transit-note { font-size: .73rem; color: #0369a1; margin-top: 8px; font-style: italic; }
+
+    /* Card footer */
+    .card-footer {
+      padding: 13px 18px 16px;
+      border-top: 1px solid rgba(0,0,0,.06); margin-top: auto;
+      display: flex; flex-direction: column; gap: 7px;
+    }
+    .btn-wta {
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      background: var(--dark-blue); color: var(--white);
+      padding: 10px 14px; border-radius: var(--r-sm);
+      font-size: .83rem; font-weight: 700; width: 100%;
+      transition: background var(--t), transform var(--t);
+    }
+    .btn-wta:hover { background: var(--blue); transform: translateY(-1px); }
+    .card-foot-row { display: flex; gap: 7px; }
+    .btn-sec {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
+      border: 1.5px solid rgba(0,63,135,.15); border-radius: var(--r-sm);
+      padding: 7px 10px; font-size: .78rem; font-weight: 500; color: var(--muted);
+      transition: all var(--t);
+    }
+    .btn-sec:hover { border-color: var(--blue); color: var(--blue); }
+    .btn-sec.transit-active { border-color: var(--blue); color: var(--blue); background: var(--blue-lt); }
+
+    /* =====================================================================
+       MAP VIEW
+       ===================================================================== */
+    .map-view { display: none; }
+    .map-view.active { display: flex; height: calc(100vh - 120px); }
+
+    #leaflet-map { flex: 1; z-index: 1; }
+
+    .map-sidebar {
+      width: 340px; background: var(--white);
+      border-left: 1px solid rgba(0,0,0,.08);
+      display: flex; flex-direction: column;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .map-sidebar-header {
+      padding: 16px 18px; border-bottom: 1px solid rgba(0,63,135,.1);
+      background: var(--blue-lt);
+    }
+    .map-sidebar-title { font-family: var(--font-d); font-size: 1rem; font-weight: 500; }
+    .map-sidebar-sub { font-size: .78rem; color: var(--muted); }
+    .map-store-list { flex: 1; overflow-y: auto; }
+    .map-store-item {
+      padding: 14px 18px; border-bottom: 1px solid rgba(0,0,0,.06);
+      cursor: pointer; transition: background var(--t);
+    }
+    .map-store-item:hover { background: var(--blue-lt); }
+    .map-store-item.selected { background: #e0f2fe; border-left: 3px solid var(--blue); }
+    .map-item-name { font-size: .9rem; font-weight: 600; margin-bottom: 3px; }
+    .map-item-meta { display: flex; align-items: center; gap: 10px; font-size: .76rem; color: var(--muted); }
+    .map-item-score { display: flex; align-items: center; gap: 3px; font-weight: 600; }
+    .map-item-badges { display: flex; gap: 4px; margin-top: 5px; }
+
+    /* Custom map markers */
+    .map-marker {
+      width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2.5px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,.25);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .map-marker-inner {
+      transform: rotate(45deg); font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Leaflet popup styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px !important; padding: 0 !important;
+      overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,.18) !important;
+    }
+    .leaflet-popup-content { margin: 0 !important; width: 260px !important; }
+    .popup-body { padding: 16px; }
+    .popup-name { font-family: var(--font-d); font-size: 1rem; font-weight: 500; margin-bottom: 3px; }
+    .popup-addr { font-size: .76rem; color: var(--muted); margin-bottom: 8px; }
+    .popup-row { display: flex; gap: 8px; margin-bottom: 9px; }
+    .popup-score { flex: 1; text-align: center; background: var(--off-white); border-radius: 7px; padding: 6px 4px; }
+    .popup-score-val { font-family: var(--font-d); font-size: .95rem; font-weight: 700; }
+    .popup-score-lbl { font-size: .62rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .popup-btn {
+      display: block; text-align: center; background: var(--dark-blue); color: var(--white);
+      padding: 8px; border-radius: 7px; font-size: .8rem; font-weight: 700;
+      transition: background var(--t); margin-top: 2px;
+    }
+    .popup-btn:hover { background: var(--blue); }
+
+    /* =====================================================================
+       PRICE COMPARE VIEW
+       ===================================================================== */
+    .price-view { padding: 32px 0 72px; }
+    .price-header { margin-bottom: 28px; }
+    .price-header h2 { font-family: var(--font-d); font-size: clamp(1.6rem,3vw,2.2rem); font-weight: 500; letter-spacing: -.02em; margin-bottom: 8px; }
+    .price-header p { color: var(--muted); font-size: .92rem; max-width: 580px; line-height: 1.6; }
+    .price-legend {
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; align-items: center;
+    }
+    .price-legend-item { display: flex; align-items: center; gap: 6px; font-size: .8rem; font-weight: 500; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .legend-best   { background: #16a34a; }
+    .legend-mid    { background: var(--gold); }
+    .legend-higher { background: #94a3b8; }
+
+    .category-section { margin-bottom: 36px; }
+    .category-title {
+      font-size: .75rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .category-title::after { content:''; flex:1; height:1px; background: rgba(0,0,0,.1); }
+
+    .price-table-wrap { overflow-x: auto; border-radius: var(--r-md); box-shadow: var(--shadow-card); }
+    .price-table {
+      width: 100%; border-collapse: collapse; background: var(--white);
+      font-size: .84rem;
+    }
+    .price-table th {
+      background: var(--dark-blue); color: var(--white); font-weight: 600;
+      padding: 12px 14px; text-align: left; font-size: .78rem;
+      letter-spacing: .03em; white-space: nowrap;
+    }
+    .price-table th:first-child { border-radius: var(--r-md) 0 0 0; }
+    .price-table th:last-child  { border-radius: 0 var(--r-md) 0 0; }
+    .price-table td {
+      padding: 11px 14px; border-bottom: 1px solid rgba(0,0,0,.06);
+      vertical-align: middle;
+    }
+    .price-table tr:last-child td { border-bottom: none; }
+    .price-table tr:nth-child(even) td { background: rgba(0,122,200,.04); }
+    .price-table tr:hover td { background: rgba(0,122,200,.08); }
+    .item-name { font-weight: 600; color: var(--text); }
+    .item-unit { font-size: .74rem; color: var(--muted); font-weight: 400; }
+    .price-cell {
+      font-weight: 700; text-align: center; border-radius: 5px;
+      padding: 4px 8px; display: inline-block; min-width: 56px;
+    }
+    .price-best   { background: #dcfce7; color: #15803d; }
+    .price-mid    { background: #fef9c3; color: #92400e; }
+    .price-higher { background: #f1f5f9; color: #475569; }
+    .price-na     { color: #d1d5db; font-weight: 400; font-size: .78rem; }
+    .price-note   { font-size: .72rem; color: var(--muted); margin-top: 2px; font-style: italic; }
+    .store-col-header { font-size: .75rem !important; }
+    .store-col-header .store-type-mini { display: block; font-size: .64rem; opacity: .7; font-weight: 400; margin-top: 1px; }
+    .price-key { margin-bottom: 10px; font-size: .8rem; color: var(--muted); font-style: italic; }
+    .price-disclaimer {
+      margin-top: 20px; padding: 14px 18px;
+      background: var(--blue-lt); border-radius: var(--r-sm);
+      font-size: .8rem; color: var(--muted); line-height: 1.6;
+    }
+
+    /* =====================================================================
+       ABOUT SECTION
+       ===================================================================== */
+    .about-section {
+      background: var(--dark-blue); color: var(--white); padding: 64px 20px;
+    }
+    .about-eyebrow { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--blue); margin-bottom: 10px; }
+    .about-title { font-family: var(--font-d); font-size: clamp(1.7rem,3vw,2.4rem); font-weight: 500; letter-spacing: -.02em; margin-bottom: 44px; }
+    .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    .about-card { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: var(--r-md); padding: 22px; }
+    .about-icon { font-size: 1.8rem; margin-bottom: 12px; }
+    .about-card-title { font-size: .95rem; font-weight: 600; margin-bottom: 6px; }
+    .about-card-text { font-size: .84rem; color: rgba(255,255,255,.62); line-height: 1.6; }
+
+    /* =====================================================================
+       REVIEWS MODAL
+       ===================================================================== */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 400;
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      opacity: 0; pointer-events: none; transition: opacity var(--t);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: auto; }
+    .modal {
+      background: var(--white); border-radius: var(--r-xl);
+      max-width: 560px; width: 100%; max-height: 88vh; overflow-y: auto;
+      box-shadow: 0 24px 64px rgba(0,0,0,.22);
+      transform: translateY(20px); transition: transform var(--t);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header {
+      padding: 24px 24px 18px; border-bottom: 1px solid rgba(0,0,0,.08);
+      display: flex; align-items: flex-start; justify-content: space-between;
+      position: sticky; top: 0; background: var(--white); z-index: 1;
+    }
+    .modal-title { font-family: var(--font-d); font-size: 1.4rem; font-weight: 500; }
+    .modal-sub { font-size: .82rem; color: var(--muted); margin-top: 3px; }
+    .modal-close {
+      width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; background: var(--off-white); color: var(--muted); font-size: 17px;
+      flex-shrink: 0; transition: background var(--t);
+    }
+    .modal-close:hover { background: var(--blue-lt); }
+    .modal-body { padding: 22px 24px; }
+    .review-form-section { background: var(--off-white); border-radius: var(--r-md); padding: 18px; margin-bottom: 24px; }
+    .form-lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 10px; }
+    .wwu-notice {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--blue-lt); border: 1px solid rgba(0,122,200,.3);
+      border-radius: var(--r-sm); padding: 9px 13px;
+      font-size: .78rem; color: var(--dark-blue); margin-bottom: 13px;
+    }
+    .star-select { display: flex; gap: 5px; margin-bottom: 12px; }
+    .star-btn { font-size: 1.4rem; color: #d1d5db; transition: transform var(--t), color var(--t); }
+    .star-btn:hover, .star-btn.sel { color: var(--gold); transform: scale(1.12); }
+    .name-row { display: flex; gap: 8px; margin-bottom: 9px; }
+    .r-input {
+      flex: 1; padding: 8px 12px; border: 1.5px solid rgba(0,0,0,.1);
+      border-radius: var(--r-sm); font-family: var(--font-b); font-size: .86rem;
+      outline: none; transition: border-color var(--t);
+    }
+    .r-input:focus { border-color: var(--blue); }
+    textarea.r-input { width: 100%; resize: vertical; min-height: 85px; margin-bottom: 9px; }
+    .btn-sub-review {
+      background: var(--dark-blue); color: var(--white); padding: 9px 20px;
+      border-radius: var(--r-sm); font-size: .86rem; font-weight: 600;
+      transition: background var(--t);
+    }
+    .btn-sub-review:hover { background: var(--blue); }
+    .reviews-list { display: flex; flex-direction: column; gap: 14px; }
+    .review-item { border: 1px solid rgba(0,0,0,.08); border-radius: var(--r-md); padding: 14px 16px; }
+    .review-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+    .reviewer-info { display: flex; align-items: center; gap: 9px; }
+    .reviewer-av {
+      width: 30px; height: 30px; border-radius: 50%; background: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: .8rem; font-weight: 700; color: white; flex-shrink: 0;
+    }
+    .reviewer-name { font-size: .85rem; font-weight: 600; }
+    .reviewer-badge { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; background: #dbeafe; color: var(--ebt-fg); padding: 2px 7px; border-radius: 100px; }
+    .reviewer-major { font-size: .72rem; color: var(--muted); }
+    .review-stars .star { font-size: .78rem; }
+    .review-date { font-size: .72rem; color: var(--muted); }
+    .review-text { font-size: .85rem; line-height: 1.58; color: #444; }
+
+    /* =====================================================================
+       TOAST
+       ===================================================================== */
+    .toast {
+      position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(70px);
+      background: var(--dark-blue); color: var(--white);
+      padding: 11px 22px; border-radius: 100px;
+      font-size: .86rem; font-weight: 500;
+      box-shadow: 0 8px 24px rgba(0,63,135,.3); z-index: 500;
+      transition: transform .3s cubic-bezier(.34,1.56,.64,1), opacity .3s;
+      opacity: 0; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* =====================================================================
+       FOOTER
+       ===================================================================== */
+    footer {
+      background: var(--dark-blue-deep); color: rgba(255,255,255,.5);
+      padding: 28px 20px; text-align: center;
+    }
+    .footer-logo { font-family: var(--font-d); font-size: 1.15rem; color: rgba(255,255,255,.85); margin-bottom: 6px; font-style: italic; }
+    .footer-text { font-size: .8rem; }
+    .footer-links { display: flex; gap: 14px; justify-content: center; margin-top: 14px; }
+    .footer-links a { font-size: .78rem; color: rgba(255,255,255,.4); transition: color var(--t); }
+    .footer-links a:hover { color: var(--blue); }
+    .footer-disc { margin-top: 14px; font-size: .73rem; color: rgba(255,255,255,.25); max-width: 580px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
+    /* =====================================================================
+       RESPONSIVE
+       ===================================================================== */
+    @media (max-width: 800px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-stats { flex-direction: row; }
+      .hero-stat { flex: 1; min-width: 0; }
+      .store-grid { grid-template-columns: 1fr; }
+      .map-sidebar { width: 280px; }
+      .map-view.active { flex-direction: column; height: auto; }
+      #leaflet-map { height: 340px; }
+      .map-sidebar { width: 100%; border-left: none; border-top: 1px solid rgba(0,0,0,.08); height: 300px; }
+    }
+    @media (max-width: 560px) {
+      .hero-stats { flex-direction: column; }
+      .tab-btn { padding: 12px 12px; font-size: .8rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ======================================================================
+     NAV
+     ====================================================================== -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <div class="nav-logo-mark">⚓</div>
+      <div class="nav-logo-text">Viking<span>Eats</span></div>
+    </a>
+    <div class="nav-links">
+      <a href="#stores">Browse</a>
+      <a href="#about">About</a>
+      <a href="https://schedules.ridewta.com/" target="_blank" rel="noopener" class="nav-cta">🚌 WTA Planner</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ======================================================================
+     HERO
+     ====================================================================== -->
+<section class="hero">
+  <div class="hero-inner">
+    <div>
+      <div class="hero-eyebrow">⚓ Made for WWU Vikings</div>
+      <h1 class="hero-title">Find affordable groceries<br/>in <em>Bellingham.</em></h1>
+      <p class="hero-sub">Compare every grocery store by price, transit, EBT, and real student reviews. Live bus routes, an interactive map, store hours, and a price comparison table — built for Vikings.</p>
+      <div class="hero-actions">
+        <a href="#stores" class="btn btn-primary">🛒 Browse Stores</a>
+        <a href="https://schedules.ridewta.com/" target="_blank" rel="noopener" class="btn btn-outline">🚌 Plan My Trip</a>
+      </div>
+    </div>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-num">19</div><div class="hero-stat-label">Stores Listed</div></div>
+      <div class="hero-stat"><div class="hero-stat-num">11</div><div class="hero-stat-label">Accept EBT</div></div>
+      <div class="hero-stat"><div class="hero-stat-num">10</div><div class="hero-stat-label">WTA Routes</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     TAB BAR — List / Map / Price Compare
+     ====================================================================== -->
+<div class="tab-bar" id="stores">
+  <div class="tab-bar-inner">
+    <button class="tab-btn active" data-tab="list">🗂 Store List</button>
+    <div class="tab-divider"></div>
+    <button class="tab-btn" data-tab="map">🗺 Map View</button>
+    <div class="tab-divider"></div>
+    <button class="tab-btn" data-tab="price">💰 Price Compare</button>
+    <div class="tab-spacer"></div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     QUICK FILTER BAR (visible for List + Map tabs)
+     ====================================================================== -->
+<div class="filter-bar" id="quick-filter-bar">
+  <div class="filter-bar-inner">
+    <button class="chip active" data-quick="all">All Stores</button>
+    <div class="chip-div"></div>
+    <button class="chip" data-quick="ebt">💳 EBT</button>
+    <button class="chip" data-quick="bulk">⚖️ Bulk</button>
+    <button class="chip" data-quick="discount">🏷️ Discount</button>
+    <button class="chip" data-quick="bus">🚌 Bus-Friendly</button>
+    <button class="chip" data-quick="walk">🚶 Walkable</button>
+    <div class="chip-div"></div>
+    <button class="chip" data-quick="produce">🥦 Produce</button>
+    <button class="chip" data-quick="halal">🥩 Halal</button>
+    <button class="chip" data-quick="international">🌍 International</button>
+    <button class="chip" data-quick="asian">🍜 Asian</button>
+    <button class="chip" data-quick="latin">🌮 Latin</button>
+    <button class="chip" data-quick="organic">🌱 Organic</button>
+    <button class="chip" data-quick="vegan">🥗 Vegan</button>
+    <button class="chip" data-quick="open">🟢 Open Now</button>
+  </div>
+</div>
+
+<!-- ======================================================================
+     LIST VIEW
+     ====================================================================== -->
+<div class="view-panel active" id="panel-list">
+  <div class="list-view">
+    <div class="container">
+      <!-- Advanced filter controls -->
+      <div class="adv-filter-row">
+        <div class="adv-filter-left">
+          <button class="btn-adv" id="adv-btn">⚙️ Advanced Filters</button>
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="search" class="search-input" id="search-input" placeholder="Search stores…" />
+          </div>
+        </div>
+        <div class="results-count" id="results-count">Showing all 19 stores</div>
+      </div>
+
+      <div class="adv-panel" id="adv-panel">
+        <div class="fg">
+          <div class="fg-label">Features</div>
+          <div class="tag-row">
+            <button class="ftag" data-filter="ebt">💳 EBT</button>
+            <button class="ftag" data-filter="bulk">⚖️ Bulk Foods</button>
+            <button class="ftag" data-filter="discount">🏷️ Discount</button>
+            <button class="ftag" data-filter="bus">🚌 Bus Score 7+</button>
+            <button class="ftag" data-filter="walk">🚶 Walk Score 7+</button>
+            <button class="ftag" data-filter="open">🟢 Open Now</button>
+          </div>
+        </div>
+        <div class="fg">
+          <div class="fg-label">Food Types</div>
+          <div class="tag-row" id="food-ftags"></div>
+        </div>
+        <div class="fg">
+          <div class="fg-label">Price Level</div>
+          <div class="tag-row">
+            <button class="ftag" data-filter="price-budget">$ Budget</button>
+            <button class="ftag" data-filter="price-mid">$$ Mid-Range</button>
+            <button class="ftag" data-filter="price-premium">$$$ Premium</button>
+          </div>
+        </div>
+        <div class="adv-actions">
+          <button class="btn btn-primary btn-sm" id="apply-adv">Apply</button>
+          <button class="btn btn-ghost btn-sm" id="clear-adv">Clear All</button>
+        </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="store-grid" id="store-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     MAP VIEW
+     ====================================================================== -->
+<div class="view-panel" id="panel-map">
+  <div class="map-view active" id="map-view-inner">
+    <!-- Shown when Leaflet CDN is blocked (e.g. inside a sandboxed iframe) -->
+    <div id="map-fallback" style="display:none; flex:1; align-items:center; justify-content:center;
+         flex-direction:column; gap:16px; padding:40px; background:var(--off-white); text-align:center;">
+      <div style="font-size:3rem;">🗺️</div>
+      <h3 style="font-family:var(--font-d);font-size:1.4rem;color:var(--dark-blue);">Map unavailable in this environment</h3>
+      <p style="color:var(--muted);max-width:440px;font-size:.9rem;line-height:1.6;">
+        The interactive map uses the Leaflet library from <strong>unpkg.com</strong>, which is blocked
+        in sandboxed previews. Download the file and open it in your browser to use the full map.
+      </p>
+      <a href="https://schedules.ridewta.com/" target="_blank" rel="noopener"
+         style="background:var(--dark-blue);color:var(--white);padding:11px 22px;border-radius:8px;font-weight:700;font-size:.9rem;">
+        🚌 Open WTA Trip Planner instead
+      </a>
+      <div id="map-store-cards-fallback" style="width:100%;max-width:860px;margin-top:8px;"></div>
+    </div>
+    <div id="leaflet-map"></div>
+    <div class="map-sidebar">
+      <div class="map-sidebar-header">
+        <div class="map-sidebar-title">📍 Bellingham Grocery Stores</div>
+        <div class="map-sidebar-sub">Click a store to see details on the map</div>
+      </div>
+      <div class="map-store-list" id="map-store-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     PRICE COMPARE VIEW
+     ====================================================================== -->
+<div class="view-panel" id="panel-price">
+  <div class="price-view">
+    <div class="container">
+      <div class="price-header">
+        <h2>Price Comparison — Student Staples</h2>
+        <p>Compare prices for common student grocery items across Bellingham stores. All prices are approximate and based on regular (non-sale) pricing. Check in-store for current deals and EBT-eligible items.</p>
+      </div>
+      <div class="price-legend">
+        <span style="font-size:.8rem; font-weight:600; color:var(--muted); margin-right:4px;">Price indicators:</span>
+        <div class="price-legend-item"><div class="legend-dot legend-best"></div> Best price</div>
+        <div class="price-legend-item"><div class="legend-dot legend-mid"></div> Mid-range</div>
+        <div class="price-legend-item"><div class="legend-dot legend-higher"></div> Higher price</div>
+      </div>
+      <div id="price-tables"></div>
+      <div class="price-disclaimer">
+        ⚠️ <strong>Disclaimer:</strong> Prices are community-estimated for typical items and will vary by brand, size, and current promotions. Always verify in-store. Grocery Outlet prices vary weekly. Co-op bulk prices depend on current suppliers. This table is intended as a general planning guide, not a guarantee of pricing.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================
+     ABOUT SECTION
+     ====================================================================== -->
+<section class="about-section" id="about">
+  <div class="container">
+    <div class="about-eyebrow">Student Resource</div>
+    <h2 class="about-title">Built for Western Washington University Vikings</h2>
+    <div class="about-grid">
+      <div class="about-card"><div class="about-icon">💳</div><div class="about-card-title">EBT & SNAP</div><div class="about-card-text">Instantly filter stores accepting EBT/SNAP — no surprises at the register.</div></div>
+      <div class="about-card"><div class="about-icon">🚌</div><div class="about-card-title">Live Bus Routes</div><div class="about-card-text">WTA route info and simulated next-arrival times per store, based on GTFS data.</div></div>
+      <div class="about-card"><div class="about-icon">🗺️</div><div class="about-card-title">Interactive Map</div><div class="about-card-text">Leaflet map with custom markers, popups, and a sidebar for quick comparison.</div></div>
+      <div class="about-card"><div class="about-icon">🕐</div><div class="about-card-title">Store Hours</div><div class="about-card-text">Open/closed status derived from Google Places-style hours data for each store.</div></div>
+      <div class="about-card"><div class="about-icon">💰</div><div class="about-card-title">Price Comparison</div><div class="about-card-text">Side-by-side price table for 30+ common student grocery staples.</div></div>
+      <div class="about-card"><div class="about-icon">⭐</div><div class="about-card-title">WWU Reviews</div><div class="about-card-text">Read and submit student-only reviews with ratings, majors, and tips.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     REVIEWS MODAL
+     ====================================================================== -->
+<div class="modal-overlay" id="reviews-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <h2 class="modal-title" id="modal-title">Store Reviews</h2>
+        <p class="modal-sub" id="modal-sub">WWU Student Reviews</p>
+      </div>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="review-form-section">
+        <div class="form-lbl">Leave a WWU Student Review</div>
+        <div class="wwu-notice">⚓ Reviews are for Western Washington University Vikings</div>
+        <div class="star-select" id="star-select">
+          <button class="star-btn" data-val="1">★</button>
+          <button class="star-btn" data-val="2">★</button>
+          <button class="star-btn" data-val="3">★</button>
+          <button class="star-btn" data-val="4">★</button>
+          <button class="star-btn" data-val="5">★</button>
+        </div>
+        <div class="name-row">
+          <input type="text" class="r-input" id="r-name" placeholder="Your name (e.g. Alex W.)" maxlength="40" />
+          <input type="text" class="r-input" id="r-major" placeholder="Major (optional)" maxlength="40" />
+        </div>
+        <textarea class="r-input" id="r-text" placeholder="Prices, selection, bus route, EBT checkout…" maxlength="400"></textarea>
+        <button class="btn-sub-review" id="submit-review">Submit Review</button>
+      </div>
+      <div class="reviews-list" id="reviews-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ======================================================================
+     FOOTER
+     ====================================================================== -->
+<footer>
+  <div class="footer-logo">VikingEats</div>
+  <div class="footer-text">A student-made grocery guide for Western Washington University Vikings</div>
+  <div class="footer-links">
+    <a href="https://schedules.ridewta.com/" target="_blank" rel="noopener">WTA Trip Planner</a>
+    <a href="https://www.ridewta.com" target="_blank" rel="noopener">WTA GTFS Data</a>
+    <a href="https://www.wwu.edu" target="_blank" rel="noopener">WWU</a>
+    <a href="https://www.dshs.wa.gov/esa/community-services-offices/basic-food" target="_blank" rel="noopener">SNAP/EBT Info</a>
+  </div>
+  <div class="footer-disc">Data is community-curated. Hours from Google Places API (simulated). Transit data modeled after WTA GTFS feed. Prices are estimates. Not affiliated with WWU or WTA.</div>
+</footer>
+
+<!-- Leaflet JS — loaded with onerror guard so a CDN block never crashes the page -->
+<script>
+  window._leafletLoadFailed = false;
+</script>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  onerror="window._leafletLoadFailed = true; window._leafletLoadError();"
+></script>
+
+<script>
+/* ========================================================================
+   STORE DATA
+   Full dataset for all 12 Bellingham grocery stores.
+   New fields: hours (weekly schedule array), transit (WTA route objects)
+   ======================================================================== */
+const STORES = [
+  // ── FRED MEYER (2 locations) ────────────────────────────────────────────
+  {
+    id:1, name:"Fred Meyer (Lakeway)", address:"800 Lakeway Dr, Bellingham, WA 98229",
+    lat:48.7435668, lng:-122.4644652,
+    type:"Supercenter", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:8, walk_score:7, student_rating:4.2, review_count:47,
+    food_tags:["produce","protein","frozen","pantry","snacks","vegan","organic","dairy-free","gluten-free"],
+    description:"Full-service supercenter on Lakeway Dr with groceries, pharmacy, and clothing. Strong produce section, reliable EBT checkout, and solid WTA bus access from campus.",
+    website:"https://www.fredmeyer.com/stores/grocery/wa/bellingham/bellingham/701/00025?cid=loc_70100025_gmb",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[6,0,23,0], tue:[6,0,23,0], wed:[6,0,23,0], thu:[6,0,23,0], fri:[6,0,23,0], sat:[6,0,23,0], sun:[6,0,23,0] },
+    transit:[
+      { route:"105", name:"Lakeway / Iowa St", stops_away:2, freq_min:30, direction:"Toward Downtown" },
+      { route:"40", name:"Barkley / Lakeway", stops_away:3, freq_min:60, direction:"Toward Cordata" }
+    ]
+  },
+  {
+    id:2, name:"Fred Meyer (Bakerview)", address:"1225 W Bakerview Rd, Bellingham, WA 98226",
+    lat:48.7885061, lng:-122.5115463,
+    type:"Supercenter", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:6, walk_score:4, student_rating:3.9, review_count:28,
+    food_tags:["produce","protein","frozen","pantry","snacks","vegan","organic","dairy-free","gluten-free"],
+    description:"North Bellingham supercenter location — larger store with more parking. Less convenient from campus but a great option if you're already in the Cordata area.",
+    website:"https://www.fredmeyer.com/stores/grocery/wa/bellingham/north-bellingham/701/00667?cid=loc_70100667_gmb",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[6,0,23,0], tue:[6,0,23,0], wed:[6,0,23,0], thu:[6,0,23,0], fri:[6,0,23,0], sat:[6,0,23,0], sun:[6,0,23,0] },
+    transit:[
+      { route:"40", name:"Cordata / Bakerview", stops_away:4, freq_min:60, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── HAGGEN (3 locations) ────────────────────────────────────────────────
+  {
+    id:3, name:"Haggen (36th St)", address:"210 36th St, Bellingham, WA 98225",
+    lat:48.732674, lng:-122.471785,
+    type:"Grocery", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:7, walk_score:6, student_rating:3.8, review_count:24,
+    food_tags:["produce","protein","frozen","pantry","snacks","gluten-free","organic","vegan"],
+    description:"South Bellingham Haggen near Whole Foods and Lakeway. Pacific Northwest regional chain with a solid deli counter and reliable EBT checkout.",
+    website:"https://local.haggen.com/wa/bellingham/210-36th-st.html",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[6,0,23,0], tue:[6,0,23,0], wed:[6,0,23,0], thu:[6,0,23,0], fri:[6,0,23,0], sat:[6,0,23,0], sun:[6,0,23,0] },
+    transit:[
+      { route:"105", name:"Lakeway / Iowa St", stops_away:3, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+  {
+    id:4, name:"Haggen (12th St)", address:"1401 12th St, Bellingham, WA 98225",
+    lat:48.719084, lng:-122.50142,
+    type:"Grocery", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:6, walk_score:5, student_rating:3.7, review_count:18,
+    food_tags:["produce","protein","frozen","pantry","snacks","gluten-free","organic"],
+    description:"Fairhaven-area Haggen on 12th St. Convenient for students living in south Bellingham or Fairhaven. Good deli and meat counter. Requires a bus from main campus.",
+    website:"https://local.haggen.com/wa/bellingham/1401-12th-st.html",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[6,0,23,0], tue:[6,0,23,0], wed:[6,0,23,0], thu:[6,0,23,0], fri:[6,0,23,0], sat:[6,0,23,0], sun:[6,0,23,0] },
+    transit:[
+      { route:"190", name:"Happy Valley / Fairhaven", stops_away:4, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+  {
+    id:5, name:"Haggen (Meridian)", address:"2814 Meridian St, Bellingham, WA 98225",
+    lat:48.767671, lng:-122.484351,
+    type:"Grocery", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:8, walk_score:6, student_rating:3.9, review_count:29,
+    food_tags:["produce","protein","frozen","pantry","snacks","gluten-free","organic","vegan"],
+    description:"Meridian corridor Haggen — most convenient for students. Close to Trader Joe's and Grocery Outlet on the same stretch. Easy WTA Route 35 access.",
+    website:"https://local.haggen.com/wa/bellingham/2814-meridian-st.html",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[6,0,23,0], tue:[6,0,23,0], wed:[6,0,23,0], thu:[6,0,23,0], fri:[6,0,23,0], sat:[6,0,23,0], sun:[6,0,23,0] },
+    transit:[
+      { route:"35", name:"Meridian St / Haggen", stops_away:1, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── SAFEWAY ─────────────────────────────────────────────────────────────
+  {
+    id:6, name:"Safeway", address:"1275 E Sunset Dr, Bellingham, WA 98226",
+    lat:48.7745687, lng:-122.4585344,
+    type:"Grocery", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:8, walk_score:5, student_rating:3.6, review_count:31,
+    food_tags:["produce","protein","frozen","pantry","snacks","organic","gluten-free"],
+    description:"Standard chain grocery on E Sunset Dr with loyalty card discounts. Reliable everyday selection and a consistent layout students find easy to navigate. WTA Route 35 nearby.",
+    website:"https://local.safeway.com/safeway/wa/bellingham/1275-e-sunset-dr.html",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[6,0,0,0], tue:[6,0,0,0], wed:[6,0,0,0], thu:[6,0,0,0], fri:[6,0,0,0], sat:[6,0,0,0], sun:[6,0,0,0] },
+    transit:[
+      { route:"35", name:"Sunset Dr / Meridian", stops_away:2, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── COMMUNITY FOOD CO-OP ─────────────────────────────────────────────────
+  {
+    id:7, name:"Community Food Co-op", address:"1220 N Forest St, Bellingham, WA 98225",
+    lat:48.7473549, lng:-122.4762175,
+    type:"Co-op", price_tier:2, ebt:true, bulk:true, discount:false,
+    bus_score:9, walk_score:9, student_rating:4.5, review_count:68,
+    food_tags:["produce","organic","vegan","gluten-free","dairy-free","bulk","pantry","protein"],
+    description:"Worker-owned co-op with an exceptional bulk foods section and local produce. Walking distance from campus on N Forest St. Membership discounts available — ideal for organic staples and bulk grains.",
+    website:"https://communityfood.coop/",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[7,0,21,0], tue:[7,0,21,0], wed:[7,0,21,0], thu:[7,0,21,0], fri:[7,0,21,0], sat:[7,0,21,0], sun:[8,0,20,0] },
+    transit:[
+      { route:"231", name:"WWU / Downtown Bellingham", stops_away:1, freq_min:20, direction:"Toward WWU" },
+      { route:"190", name:"Happy Valley / Downtown", stops_away:2, freq_min:30, direction:"Toward Fairhaven" }
+    ]
+  },
+
+  // ── GROCERY OUTLET ───────────────────────────────────────────────────────
+  {
+    id:8, name:"Grocery Outlet Bargain Market", address:"1600 Ellis St, Bellingham, WA 98225",
+    lat:48.7509716, lng:-122.470626,
+    type:"Discount", price_tier:1, ebt:true, bulk:false, discount:true,
+    bus_score:8, walk_score:7, student_rating:4.6, review_count:83,
+    food_tags:["produce","frozen","pantry","snacks","protein","vegan","dairy-free"],
+    description:"Student favorite on Ellis St for deeply discounted overstock and name-brand items. Prices change weekly — great for pantry staples and frozen meals on a tight budget. Very walkable from downtown.",
+    website:"https://www.groceryoutlet.com/circulars/storeid/115",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[8,0,21,0], tue:[8,0,21,0], wed:[8,0,21,0], thu:[8,0,21,0], fri:[8,0,21,0], sat:[8,0,21,0], sun:[9,0,20,0] },
+    transit:[
+      { route:"231", name:"WWU / Downtown Bellingham", stops_away:2, freq_min:20, direction:"Toward WWU" },
+      { route:"35", name:"Meridian / Ellis", stops_away:3, freq_min:30, direction:"Toward Cordata" }
+    ]
+  },
+
+  // ── TRADER JOE'S ─────────────────────────────────────────────────────────
+  {
+    id:9, name:"Trader Joe's", address:"2410 James St, Bellingham, WA 98225",
+    lat:48.762185, lng:-122.464044,
+    type:"Specialty", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:8, walk_score:6, student_rating:4.7, review_count:114,
+    food_tags:["produce","frozen","snacks","vegan","organic","gluten-free","dairy-free","pantry"],
+    description:"Beloved for affordable organic and specialty products on James St. Student staples: frozen meals, unique snacks, and great pantry prices. Small format but extremely popular with WWU students.",
+    website:"https://locations.traderjoes.com/wa/bellingham/151/",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[8,0,21,0], tue:[8,0,21,0], wed:[8,0,21,0], thu:[8,0,21,0], fri:[8,0,21,0], sat:[8,0,21,0], sun:[8,0,21,0] },
+    transit:[
+      { route:"35", name:"Meridian St / James St", stops_away:2, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── WINCO FOODS ──────────────────────────────────────────────────────────
+  {
+    id:10, name:"WinCo Foods", address:"300 E Bellis Fair Pkwy, Bellingham, WA 98226",
+    lat:48.78785324, lng:-122.4823914,
+    type:"Discount Supermarket", price_tier:1, ebt:true, bulk:true, discount:true,
+    bus_score:6, walk_score:3, student_rating:4.3, review_count:52,
+    food_tags:["produce","protein","frozen","pantry","snacks","bulk","dairy-free","gluten-free","international"],
+    description:"Employee-owned bulk supermarket at Bellis Fair with some of the lowest per-unit prices in Bellingham. Huge bulk foods section, wide selection, and 24-hour access. Best for big grocery hauls — requires a bus trip to the mall area.",
+    website:"https://www.wincofoods.com/",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[0,0,23,59], tue:[0,0,23,59], wed:[0,0,23,59], thu:[0,0,23,59], fri:[0,0,23,59], sat:[0,0,23,59], sun:[0,0,23,59] },
+    transit:[
+      { route:"40", name:"Cordata / Bellis Fair", stops_away:3, freq_min:60, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── WHOLE FOODS ───────────────────────────────────────────────────────────
+  {
+    id:11, name:"Whole Foods Market", address:"1030 Lakeway Dr, Bellingham, WA 98229",
+    lat:48.7437181, lng:-122.461361,
+    type:"Specialty / Organic", price_tier:3, ebt:true, bulk:false, discount:false,
+    bus_score:7, walk_score:6, student_rating:3.4, review_count:22,
+    food_tags:["produce","organic","vegan","gluten-free","dairy-free","protein","pantry"],
+    description:"Premium organic grocery on Lakeway Dr. Great quality and hot bar, but notably expensive — better for occasional specialty items than weekly shopping. EBT accepted. Close to Fred Meyer Lakeway.",
+    website:"https://www.wholefoodsmarket.com/stores/bellinghamlakeway",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[7,0,22,0], tue:[7,0,22,0], wed:[7,0,22,0], thu:[7,0,22,0], fri:[7,0,22,0], sat:[7,0,22,0], sun:[7,0,22,0] },
+    transit:[
+      { route:"105", name:"Lakeway / Iowa St", stops_away:2, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── WALMART ───────────────────────────────────────────────────────────────
+  {
+    id:12, name:"Walmart Supercenter", address:"4420 Meridian St, Bellingham, WA 98226",
+    lat:48.801543, lng:-122.4821631,
+    type:"Supercenter", price_tier:1, ebt:true, bulk:false, discount:true,
+    bus_score:7, walk_score:3, student_rating:3.5, review_count:55,
+    food_tags:["produce","protein","frozen","pantry","snacks","dairy-free","gluten-free","international"],
+    description:"Lowest prices in the city for many staples. Huge selection including a solid international foods aisle. Not walkable from campus but reachable via WTA Route 35 on Meridian.",
+    website:"https://www.walmart.com/store/2450-bellingham-wa",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[0,0,23,59], tue:[0,0,23,59], wed:[0,0,23,59], thu:[0,0,23,59], fri:[0,0,23,59], sat:[0,0,23,59], sun:[0,0,23,59] },
+    transit:[
+      { route:"35", name:"Meridian St / Cordata", stops_away:6, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── NEIGHBORHOOD MARKET ───────────────────────────────────────────────────
+  {
+    id:13, name:"Neighborhood Market", address:"2019 Harris Ave, Bellingham, WA 98225",
+    lat:48.7202155, lng:-122.4914904,
+    type:"Specialty / Corner Store", price_tier:2, ebt:false, bulk:false, discount:false,
+    bus_score:6, walk_score:6, student_rating:3.8, review_count:11,
+    food_tags:["produce","pantry","snacks","international"],
+    description:"Community-serving specialty market in the Fairhaven area on Harris Ave. Convenient for students living south of campus — good for quick grocery pickups and local finds.",
+    website:null,
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[8,0,20,0], tue:[8,0,20,0], wed:[8,0,20,0], thu:[8,0,20,0], fri:[8,0,20,0], sat:[9,0,19,0], sun:[10,0,17,0] },
+    transit:[
+      { route:"190", name:"Happy Valley / Fairhaven", stops_away:3, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── US FOODS CHEF'STORE ───────────────────────────────────────────────────
+  {
+    id:14, name:"US Foods CHEF'STORE", address:"405 Ohio St, Bellingham, WA 98225",
+    lat:48.7557051, lng:-122.4702926,
+    type:"Wholesale / Bulk", price_tier:1, ebt:false, bulk:true, discount:true,
+    bus_score:8, walk_score:7, student_rating:4.1, review_count:19,
+    food_tags:["produce","protein","frozen","pantry","snacks","bulk","dairy-free"],
+    description:"Restaurant-supply warehouse store open to the public on Ohio St. Excellent for bulk buying — giant portions of pantry staples, proteins, and frozen goods at wholesale prices. No membership required. Great for groups of students splitting bulk purchases.",
+    website:"https://www.chefstore.com/locations/store/bellingham-552/",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[7,0,18,0], tue:[7,0,18,0], wed:[7,0,18,0], thu:[7,0,18,0], fri:[7,0,18,0], sat:[7,0,18,0], sun:[9,0,17,0] },
+    transit:[
+      { route:"231", name:"WWU / Downtown Bellingham", stops_away:3, freq_min:20, direction:"Toward WWU" }
+    ]
+  },
+
+  // ── JJ'S IN AND OUT FOOD MART ─────────────────────────────────────────────
+  {
+    id:15, name:"JJ's In and Out Food Mart", address:"2219 Douglas Ave, Bellingham, WA 98225",
+    lat:48.7239802, lng:-122.4879324,
+    type:"Convenience / Corner Store", price_tier:2, ebt:false, bulk:false, discount:false,
+    bus_score:6, walk_score:6, student_rating:3.5, review_count:8,
+    food_tags:["snacks","pantry","produce"],
+    description:"Neighborhood convenience and food mart on Douglas Ave. Handy for quick snack runs and pantry fill-ins in south Bellingham. Limited selection but convenient for students in the area.",
+    website:null,
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[7,0,22,0], tue:[7,0,22,0], wed:[7,0,22,0], thu:[7,0,22,0], fri:[7,0,22,0], sat:[7,0,22,0], sun:[8,0,21,0] },
+    transit:[
+      { route:"190", name:"Happy Valley / Fairhaven", stops_away:4, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── N STATE STREET MARKET ─────────────────────────────────────────────────
+  {
+    id:16, name:"N State Street Market", address:"902 N State St Suite 103, Bellingham, WA 98225",
+    lat:48.7442245, lng:-122.4828832,
+    type:"International / Corner Store", price_tier:1, ebt:false, bulk:false, discount:true,
+    bus_score:9, walk_score:9, student_rating:4.4, review_count:23,
+    food_tags:["international","snacks","pantry","produce","asian"],
+    description:"Compact international market on N State St — extremely close to campus. Great for affordable international snacks, pantry staples, and quick grocery runs between classes. A genuinely walkable student favorite.",
+    website:null,
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[8,0,21,0], tue:[8,0,21,0], wed:[8,0,21,0], thu:[8,0,21,0], fri:[8,0,21,0], sat:[9,0,20,0], sun:[10,0,19,0] },
+    transit:[
+      { route:"231", name:"WWU / Downtown Bellingham", stops_away:1, freq_min:20, direction:"Toward WWU" }
+    ]
+  },
+
+  // ── CORNWALL CORNER STORE ─────────────────────────────────────────────────
+  {
+    id:17, name:"Cornwall Corner Store", address:"2230 Cornwall Ave, Bellingham, WA 98225",
+    lat:48.7601955, lng:-122.4747957,
+    type:"Convenience / Corner Store", price_tier:2, ebt:false, bulk:false, discount:false,
+    bus_score:7, walk_score:7, student_rating:3.9, review_count:14,
+    food_tags:["snacks","pantry","produce"],
+    description:"Friendly neighborhood corner store on Cornwall Ave. Good for quick top-up shopping without heading to a big-box store. Walkable from several student housing areas north of campus.",
+    website:"https://www.facebook.com/Cornwallcornerstore",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[7,0,22,0], tue:[7,0,22,0], wed:[7,0,22,0], thu:[7,0,22,0], fri:[7,0,22,0], sat:[7,0,22,0], sun:[8,0,21,0] },
+    transit:[
+      { route:"35", name:"Meridian / Cornwall", stops_away:3, freq_min:30, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── COSTCO ────────────────────────────────────────────────────────────────
+  {
+    id:19, name:"Costco Wholesale", address:"4125 Arctic Ave, Bellingham, WA 98226",
+    lat:48.792345, lng:-122.5152308,
+    type:"Wholesale / Bulk", price_tier:1, ebt:false, bulk:true, discount:true,
+    bus_score:5, walk_score:2, student_rating:4.2, review_count:34,
+    food_tags:["produce","protein","frozen","pantry","snacks","bulk","organic","dairy-free","gluten-free","international"],
+    description:"Membership-based warehouse club on Arctic Ave with unbeatable bulk pricing on groceries, produce, and frozen goods. Membership required (~$65/yr) — best value when shared with roommates. No EBT. Requires a car or bus transfer; great for big monthly hauls.",
+    website:"https://www.costco.com/",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[10,0,20,30], tue:[10,0,20,30], wed:[10,0,20,30], thu:[10,0,20,30], fri:[10,0,20,30], sat:[9,30,18,0], sun:[10,0,18,0] },
+    transit:[
+      { route:"40", name:"Cordata / Arctic Ave", stops_away:5, freq_min:60, direction:"Toward Downtown" }
+    ]
+  },
+
+  // ── WALGREENS ─────────────────────────────────────────────────────────────
+  {
+    id:18, name:"Walgreens", address:"125 Samish Way, Bellingham, WA 98225",
+    lat:48.7344255, lng:-122.4694216,
+    type:"Pharmacy / Convenience", price_tier:2, ebt:true, bulk:false, discount:false,
+    bus_score:8, walk_score:7, student_rating:3.4, review_count:16,
+    food_tags:["snacks","pantry","frozen","dairy-free"],
+    description:"Pharmacy with a grocery section on Samish Way — convenient for students near campus. Good for pantry staples, snacks, and frozen basics when other stores are closed. EBT accepted. Open late most days.",
+    website:"https://www.walgreens.com/locator/walgreens-125+samish+way-bellingham-wa-98225/id=16095",
+    wta_link:"https://schedules.ridewta.com/",
+    hours:{ mon:[7,0,22,0], tue:[7,0,22,0], wed:[7,0,22,0], thu:[7,0,22,0], fri:[7,0,22,0], sat:[8,0,22,0], sun:[9,0,21,0] },
+    transit:[
+      { route:"231", name:"WWU / Samish Way", stops_away:2, freq_min:20, direction:"Toward WWU" },
+      { route:"35", name:"Samish Way / Meridian", stops_away:2, freq_min:30, direction:"Toward Cordata" }
+    ]
+  }
+];
+
+/* ========================================================================
+   PRICE COMPARISON DATA
+   Categories → Items → Store prices (null = not carried / N/A)
+   Prices in dollars, representing typical per-unit cost.
+   ======================================================================== */
+const PRICE_DATA = {
+  "🥦 Produce & Basics": [
+    { item:"Bananas", unit:"per lb", prices:{ "Fred Meyer":0.59, "Grocery Outlet":0.49, "Trader Joe's":0.29, "Whole Foods":0.79, "Co-op Downtown":0.79, "Walmart":0.44, "Haggen":0.59, "Asia Grocery":0.39, "Safeway":0.69 }},
+    { item:"Bagged Salad Mix", unit:"10–12 oz", prices:{ "Fred Meyer":2.99, "Grocery Outlet":1.99, "Trader Joe's":2.99, "Whole Foods":3.99, "Co-op Downtown":4.29, "Walmart":2.48, "Haggen":3.49, "Safeway":3.99 }},
+    { item:"Roma Tomatoes", unit:"per lb", prices:{ "Fred Meyer":1.49, "Grocery Outlet":0.99, "Trader Joe's":1.99, "Whole Foods":2.49, "Co-op Downtown":2.29, "Walmart":0.98, "Haggen":1.69, "Asia Grocery":0.79, "La Michoacana":0.79, "Safeway":1.79 }},
+    { item:"Yellow Onions", unit:"3 lb bag", prices:{ "Fred Meyer":2.49, "Grocery Outlet":1.79, "Trader Joe's":2.49, "Whole Foods":3.49, "Co-op Downtown":3.29, "Walmart":1.96, "Haggen":2.99, "Asia Grocery":1.99, "La Michoacana":1.99, "Safeway":2.69 }},
+    { item:"Baby Carrots", unit:"1 lb bag", prices:{ "Fred Meyer":1.29, "Grocery Outlet":0.99, "Trader Joe's":1.19, "Whole Foods":2.49, "Co-op Downtown":1.99, "Walmart":0.98, "Haggen":1.49, "Safeway":1.79 }},
+  ],
+  "🍚 Grains & Pantry": [
+    { item:"White Rice", unit:"5 lb bag", prices:{ "Fred Meyer":5.49, "Grocery Outlet":3.99, "Trader Joe's":3.99, "Whole Foods":7.99, "Co-op Downtown":null, "Walmart":3.98, "Haggen":5.99, "Asia Grocery":4.49, "Safeway":5.99 }},
+    { item:"White Rice (bulk)", unit:"per lb (bulk)", prices:{ "Co-op Downtown":1.49, "Co-op Cordata":1.49 }},
+    { item:"Spaghetti / Pasta", unit:"16 oz", prices:{ "Fred Meyer":1.39, "Grocery Outlet":0.99, "Trader Joe's":1.29, "Whole Foods":2.49, "Co-op Downtown":1.99, "Walmart":0.98, "Haggen":1.69, "Safeway":1.89 }},
+    { item:"Rolled Oats", unit:"42 oz", prices:{ "Fred Meyer":4.49, "Grocery Outlet":2.99, "Trader Joe's":3.49, "Whole Foods":5.99, "Co-op Downtown":null, "Walmart":3.64, "Haggen":4.99, "Safeway":5.29 }},
+    { item:"Rolled Oats (bulk)", unit:"per lb (bulk)", prices:{ "Co-op Downtown":1.39, "Co-op Cordata":1.39 }},
+    { item:"Canned Black Beans", unit:"15 oz", prices:{ "Fred Meyer":1.09, "Grocery Outlet":0.79, "Trader Joe's":0.99, "Whole Foods":1.69, "Co-op Downtown":1.29, "Walmart":0.78, "Haggen":1.19, "La Michoacana":0.89, "Safeway":1.29 }},
+    { item:"Canned Diced Tomatoes", unit:"14.5 oz", prices:{ "Fred Meyer":1.29, "Grocery Outlet":0.89, "Trader Joe's":1.19, "Whole Foods":2.29, "Co-op Downtown":1.79, "Walmart":0.78, "Haggen":1.49, "Safeway":1.59 }},
+    { item:"Loaf of Bread", unit:"20 oz", prices:{ "Fred Meyer":2.99, "Grocery Outlet":1.99, "Trader Joe's":3.49, "Whole Foods":4.99, "Co-op Downtown":5.99, "Walmart":1.78, "Haggen":3.49, "Safeway":3.29 }},
+  ],
+  "🥛 Dairy & Eggs": [
+    { item:"Eggs", unit:"1 dozen", prices:{ "Fred Meyer":3.99, "Grocery Outlet":2.99, "Trader Joe's":3.49, "Whole Foods":6.99, "Co-op Downtown":5.99, "Walmart":2.78, "Haggen":4.29, "Safeway":4.49 }},
+    { item:"Whole Milk", unit:"1 gallon", prices:{ "Fred Meyer":4.29, "Grocery Outlet":3.49, "Trader Joe's":4.49, "Whole Foods":6.99, "Co-op Downtown":6.49, "Walmart":3.48, "Haggen":4.79, "Safeway":4.99 }},
+    { item:"Shredded Cheddar", unit:"8 oz", prices:{ "Fred Meyer":3.49, "Grocery Outlet":2.49, "Trader Joe's":2.99, "Whole Foods":5.49, "Co-op Downtown":4.49, "Walmart":2.78, "Haggen":3.99, "Safeway":4.29 }},
+    { item:"Greek Yogurt", unit:"32 oz", prices:{ "Fred Meyer":5.49, "Grocery Outlet":3.99, "Trader Joe's":5.99, "Whole Foods":7.49, "Co-op Downtown":6.99, "Walmart":4.78, "Haggen":5.99, "Safeway":6.49 }},
+    { item:"Butter", unit:"1 lb (4 sticks)", prices:{ "Fred Meyer":5.49, "Grocery Outlet":3.99, "Trader Joe's":4.49, "Whole Foods":8.99, "Co-op Downtown":7.49, "Walmart":3.98, "Haggen":5.99, "Safeway":6.29 }},
+  ],
+  "🍗 Protein & Meat": [
+    { item:"Chicken Breast", unit:"per lb", prices:{ "Fred Meyer":4.99, "Grocery Outlet":3.99, "Haggen":5.49, "Whole Foods":7.99, "Co-op Downtown":7.99, "Walmart":2.98, "La Michoacana":3.49, "Safeway":5.99 }},
+    { item:"Ground Beef (80/20)", unit:"per lb", prices:{ "Fred Meyer":5.49, "Grocery Outlet":4.49, "Haggen":5.99, "Whole Foods":8.99, "Co-op Downtown":8.99, "Walmart":3.98, "La Michoacana":4.49, "Safeway":5.99 }},
+    { item:"Firm Tofu", unit:"14–16 oz", prices:{ "Fred Meyer":2.49, "Trader Joe's":1.99, "Whole Foods":3.49, "Co-op Downtown":2.99, "Walmart":1.98, "Asia Grocery":1.49, "Safeway":2.99 }},
+    { item:"Canned Tuna", unit:"5 oz", prices:{ "Fred Meyer":1.49, "Grocery Outlet":0.99, "Trader Joe's":1.49, "Whole Foods":2.49, "Co-op Downtown":2.29, "Walmart":0.98, "Haggen":1.69, "Safeway":1.79 }},
+    { item:"Peanut Butter", unit:"16 oz", prices:{ "Fred Meyer":3.49, "Grocery Outlet":2.49, "Trader Joe's":2.99, "Whole Foods":4.99, "Co-op Downtown":null, "Walmart":2.48, "Haggen":3.79, "Safeway":3.99 }},
+    { item:"Peanut Butter (bulk)", unit:"per lb (bulk)", prices:{ "Co-op Downtown":3.99, "Co-op Cordata":3.99 }},
+  ],
+  "🧊 Frozen & Ready Meals": [
+    { item:"Frozen Burritos", unit:"8-pack", prices:{ "Fred Meyer":5.99, "Grocery Outlet":3.49, "Trader Joe's":4.99, "Walmart":3.98, "Haggen":6.49, "Safeway":6.99 }},
+    { item:"Frozen Stir-Fry Veg", unit:"16 oz", prices:{ "Fred Meyer":3.49, "Grocery Outlet":2.49, "Trader Joe's":2.49, "Whole Foods":4.99, "Walmart":1.98, "Haggen":3.99, "Asia Grocery":2.29, "Safeway":3.99 }},
+    { item:"Ramen Noodle Packets", unit:"each", prices:{ "Fred Meyer":0.39, "Grocery Outlet":0.29, "Walmart":0.25, "Haggen":0.49, "Asia Grocery":0.39, "Safeway":0.49 }},
+    { item:"Mac & Cheese Box", unit:"7.25 oz", prices:{ "Fred Meyer":1.29, "Grocery Outlet":0.79, "Trader Joe's":1.19, "Walmart":0.68, "Haggen":1.49, "Safeway":1.49 }},
+  ],
+};
+
+/* ========================================================================
+   REVIEW DATA (seed reviews per store)
+   ======================================================================== */
+const REVIEWS = {
+  1:[{ name:"Jamie K.", major:"Environmental Studies", rating:5, text:"Bus route 35 drops me right at the door. Great organic section and EBT checkout is always smooth.", date:"2 weeks ago" },{ name:"Sofia R.", major:"Marine Biology", rating:4, text:"Great one-stop shop. Store brand prices are solid for students. A bit crowded on weekends.", date:"1 month ago" }],
+  2:[{ name:"Marcus T.", major:"Computer Science", rating:5, text:"This place is a GOAT for tight budgets. Found name-brand cereal for $1.99. Always a treasure hunt.", date:"1 week ago" },{ name:"Priya N.", major:"Psychology", rating:5, text:"Can't afford to shop anywhere else right now lol. Frozen meals for $2-3, EBT works great.", date:"3 weeks ago" }],
+  4:[{ name:"Emma S.", major:"Education", rating:5, text:"TJ's frozen section is basically my meal plan. Mandarin chicken + rice = college survival.", date:"4 days ago" },{ name:"Noah B.", major:"Biochemistry", rating:5, text:"Organic produce prices are WAY better than Whole Foods. I come every week.", date:"2 weeks ago" }],
+  5:[{ name:"Chris P.", major:"Kinesiology", rating:3, text:"Great quality, amazing hot bar, but my wallet cried. Only go for specific specialty items now.", date:"1 month ago" }],
+  6:[{ name:"River T.", major:"Environmental Studies", rating:5, text:"10/10 walk from campus. The bulk foods are a game changer. Staff are always kind and helpful.", date:"3 days ago" },{ name:"Fatima H.", major:"Nursing", rating:5, text:"Best vegan options in Bellingham. Co-op membership is worth it if you shop regularly.", date:"1 week ago" }],
+  8:[{ name:"Tyler G.", major:"Criminal Justice", rating:4, text:"Cheapest prices in the city — period. The international foods aisle is solid. Worth the bus ride.", date:"1 week ago" }],
+  9:[{ name:"James C.", major:"Asian Studies", rating:5, text:"Hidden gem. Huge bag of rice + all your Asian pantry staples for almost nothing. Owner is super friendly.", date:"5 days ago" },{ name:"Yuki T.", major:"International Business", rating:5, text:"Only place in Bellingham with proper Japanese ingredients. Best prices for tofu and ramen.", date:"2 weeks ago" }],
+  10:[{ name:"Carlos M.", major:"Spanish", rating:5, text:"Finally a place with real carnitas ingredients and fresh tortillas. Prices on meat are way better than chain stores.", date:"2 weeks ago" }],
+};
+
+/* ========================================================================
+   FOOD TAG OPTIONS (for advanced filter)
+   ======================================================================== */
+const FOOD_TAGS = [
+  { key:"produce",      label:"🥦 Produce" },
+  { key:"halal",        label:"🥩 Halal" },
+  { key:"international",label:"🌍 International" },
+  { key:"asian",        label:"🍜 Asian Foods" },
+  { key:"latin",        label:"🌮 Latin Foods" },
+  { key:"organic",      label:"🌱 Organic" },
+  { key:"vegan",        label:"🥗 Vegan" },
+  { key:"gluten-free",  label:"🌾 Gluten-Free" },
+  { key:"dairy-free",   label:"🥛 Dairy-Free" },
+  { key:"protein",      label:"🍗 Protein / Meat" },
+  { key:"frozen",       label:"🧊 Frozen Meals" },
+  { key:"snacks",       label:"🍿 Snacks" },
+  { key:"pantry",       label:"🫙 Pantry Staples" },
+  { key:"bulk",         label:"⚖️ Bulk Foods" },
+];
+
+/* ========================================================================
+   HOURS UTILITY
+   Returns an "open/closed/unknown" status object for a store right now.
+   hours format: { mon:[openH,openMin,closeH,closeMin], ... }
+   If closeH=0 && closeMin=0, treat as midnight.
+   ======================================================================== */
+function getHoursStatus(store) {
+  if (!store.hours) return { status:"unknown", label:"Hours unknown" };
+  const now = new Date();
+  const dayKeys = ["sun","mon","tue","wed","thu","fri","sat"];
+  const dayKey = dayKeys[now.getDay()];
+  const h = store.hours[dayKey];
+  if (!h) return { status:"unknown", label:"Hours unknown" };
+  const [oH, oM, cH, cM] = h;
+  const openMin  = oH * 60 + oM;
+  const closeMin = (cH === 0 && cM === 0) ? 24 * 60 : cH * 60 + cM;
+  const nowMin   = now.getHours() * 60 + now.getMinutes();
+  const isOpen   = nowMin >= openMin && nowMin < closeMin;
+
+  const fmt = (hh, mm) => {
+    const ampm = hh < 12 ? "AM" : "PM";
+    const h12  = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+    return mm === 0 ? `${h12}${ampm}` : `${h12}:${String(mm).padStart(2,'0')}${ampm}`;
+  };
+  const openStr  = fmt(oH, oM);
+  const closeStr = (cH === 0 && cM === 0) ? "Midnight" : fmt(cH, cM);
+
+  if (isOpen) {
+    // How long until close?
+    const minsLeft = closeMin - nowMin;
+    const closingSoon = minsLeft <= 60;
+    return {
+      status: "open",
+      label: closingSoon ? `Closes at ${closeStr} · Closing soon!` : `Open · Closes ${closeStr}`,
+    };
+  } else {
+    return {
+      status: "closed",
+      label: `Closed · Opens ${openStr}`,
+    };
+  }
+}
+
+/* ========================================================================
+   TRANSIT SIMULATION
+   Generates simulated next-arrival minutes for each route, based on
+   the route's frequency. This mimics what you'd get from a GTFS
+   real-time feed. In production, replace with actual GTFS-RT API calls.
+   ======================================================================== */
+function getNextArrivals(route) {
+  // Deterministic "random" based on current minute + route number
+  const seed = (new Date().getMinutes() + parseInt(route.route, 10)) % route.freq_min;
+  const next1 = seed === 0 ? route.freq_min : seed;
+  const next2 = next1 + route.freq_min;
+  return { next1, next2 };
+}
+
+/* ========================================================================
+   APP STATE
+   ======================================================================== */
+let state = {
+  tab: "list",
+  quickFilter: "all",
+  activeFilters: new Set(),
+  search: "",
+  currentStoreId: null,
+  selectedRating: 0,
+  mapInstance: null,
+  mapMarkers: {},
+  selectedMapStore: null,
+};
+
+/* ========================================================================
+   HELPERS
+   ======================================================================== */
+const scoreClass = v => v >= 8 ? "good" : v >= 6 ? "ok" : "poor";
+
+function starsHTML(rating, size = 1) {
+  const full = Math.floor(rating), half = rating % 1 >= 0.5;
+  let s = '<div class="stars">';
+  for (let i = 0; i < full; i++)  s += '<span class="star on">★</span>';
+  if (half) s += '<span class="star on" style="opacity:.55">★</span>';
+  for (let i = 0; i < (5 - full - (half?1:0)); i++) s += '<span class="star off">★</span>';
+  return s + '</div>';
+}
+
+function priceTierHTML(tier) {
+  const labels = ["","$","$$","$$$"];
+  return `<div class="price-tier" title="Price tier: ${labels[tier]}">` +
+    [1,2,3].map(i=>`<span class="${i>tier?'dim':''}">${'$'}</span>`).join('') + '</div>';
+}
+
+function stripeClass(tier) { return ["","stripe-budget","stripe-mid","stripe-premium"][tier]; }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ========================================================================
+   FILTER ENGINE
+   ======================================================================== */
+function filteredStores() {
+  return STORES.filter(s => {
+    // Search
+    if (state.search) {
+      const q = state.search.toLowerCase();
+      if (![s.name, s.type, s.description, ...s.food_tags].some(x => x.toLowerCase().includes(q))) return false;
+    }
+    // Quick filter
+    const qf = state.quickFilter;
+    if (qf === "ebt"     && !s.ebt)          return false;
+    if (qf === "bulk"    && !s.bulk)         return false;
+    if (qf === "discount"&& !s.discount)     return false;
+    if (qf === "bus"     && s.bus_score < 7) return false;
+    if (qf === "walk"    && s.walk_score < 7)return false;
+    if (qf === "open") {
+      if (getHoursStatus(s).status !== "open") return false;
+    }
+    const foodQFs = ["produce","halal","international","asian","latin","organic","vegan"];
+    if (foodQFs.includes(qf) && !s.food_tags.includes(qf)) return false;
+
+    // Advanced filters
+    for (const f of state.activeFilters) {
+      if (f === "ebt"          && !s.ebt)          return false;
+      if (f === "bulk"         && !s.bulk)         return false;
+      if (f === "discount"     && !s.discount)     return false;
+      if (f === "bus"          && s.bus_score < 7) return false;
+      if (f === "walk"         && s.walk_score < 7)return false;
+      if (f === "price-budget" && s.price_tier !== 1) return false;
+      if (f === "price-mid"    && s.price_tier !== 2) return false;
+      if (f === "price-premium"&& s.price_tier !== 3) return false;
+      if (f === "open" && getHoursStatus(s).status !== "open") return false;
+      const foodKeys = FOOD_TAGS.map(t => t.key);
+      if (foodKeys.includes(f) && !s.food_tags.includes(f)) return false;
+    }
+    return true;
+  });
+}
+
+/* ========================================================================
+   TRANSIT PANEL HTML
+   ======================================================================== */
+function transitHTML(store) {
+  if (!store.transit || store.transit.length === 0) {
+    return '<div class="transit-panel open"><p style="font-size:.8rem;color:var(--muted)">No direct bus routes data available for this store.</p></div>';
+  }
+  const rows = store.transit.map(r => {
+    const { next1, next2 } = getNextArrivals(r);
+    return `
+    <div class="route-item">
+      <div class="route-num">${r.route}</div>
+      <div class="route-info">
+        <div class="route-name">${r.name}</div>
+        <div class="route-stops">${r.stops_away} stop${r.stops_away!==1?'s':''} away · ${r.direction}</div>
+        <div class="route-next">🕐 Next: ~${next1} min · then ~${next2} min</div>
+        <div class="route-freq">Every ${r.freq_min} min (simulated from WTA GTFS)</div>
+      </div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="transit-panel open" id="transit-${store.id}">
+    <div class="transit-title">🚌 WTA Bus Routes Serving This Store</div>
+    ${rows}
+    <div class="transit-note">Arrival times simulated. <a href="${store.wta_link}" target="_blank" rel="noopener" style="color:#0369a1;font-weight:600">Open WTA Trip Planner →</a></div>
+  </div>`;
+}
+
+/* ========================================================================
+   RENDER STORE CARDS
+   ======================================================================== */
+function renderCards() {
+  const stores = filteredStores();
+  const grid = document.getElementById('store-grid');
+  const count = document.getElementById('results-count');
+  count.textContent = `Showing ${stores.length} of ${STORES.length} store${STORES.length !== 1 ? 's' : ''}`;
+
+  if (stores.length === 0) {
+    grid.innerHTML = `<div class="no-results"><div class="no-results-icon">🔍</div><h3>No stores match your filters</h3><p>Try clearing some filters.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = stores.map((s, idx) => {
+    const hs = getHoursStatus(s);
+    const hoursClass = { open:"hours-open", closed:"hours-closed", unknown:"hours-unknown" }[hs.status];
+    const badges = [
+      s.ebt     ? '<span class="badge badge-ebt">💳 EBT</span>' : '',
+      s.bulk    ? '<span class="badge badge-bulk">⚖️ Bulk</span>' : '',
+      s.discount? '<span class="badge badge-disc">🏷️ Discount</span>' : '',
+    ].filter(Boolean).join('');
+    const revCount = (REVIEWS[s.id]||[]).length;
+
+    return `
+    <article class="store-card" style="animation-delay:${idx*.04}s">
+      <div class="card-stripe ${stripeClass(s.price_tier)}"></div>
+      <div class="card-body">
+        <div class="card-top">
+          <div>
+            <div class="type-badge">${s.type}</div>
+            <h2 class="card-name">${s.name}</h2>
+          </div>
+          ${priceTierHTML(s.price_tier)}
+        </div>
+        <div class="card-addr">📍 ${s.address}</div>
+
+        <!-- Hours badge (Google Places-style) -->
+        <span class="hours-badge ${hoursClass}">
+          <span class="hours-dot"></span> ${hs.label}
+        </span>
+
+        <p class="card-desc">${s.description}</p>
+
+        ${badges ? `<div class="card-badges">${badges}</div>` : ''}
+        <div class="food-tags">${s.food_tags.slice(0,6).map(t=>`<span class="food-tag">${t}</span>`).join('')}${s.food_tags.length>6?`<span class="food-tag">+${s.food_tags.length-6}</span>`:''}</div>
+
+        <div class="card-scores">
+          <div class="score-item">
+            <div class="score-icon">🚌</div>
+            <div class="score-val ${scoreClass(s.bus_score)}">${s.bus_score}/10</div>
+            <div class="score-lbl">Bus Access</div>
+          </div>
+          <div class="score-item">
+            <div class="score-icon">🚶</div>
+            <div class="score-val ${scoreClass(s.walk_score)}">${s.walk_score}/10</div>
+            <div class="score-lbl">Walkable</div>
+          </div>
+          <div class="score-item">
+            <div class="score-icon">⭐</div>
+            <div class="score-val ${scoreClass(s.student_rating*2)}">${s.student_rating}</div>
+            <div class="score-lbl">WWU Rating</div>
+          </div>
+        </div>
+
+        <div class="card-rating">
+          ${starsHTML(s.student_rating)}
+          <span class="rating-text"><span class="rating-num">${s.student_rating}</span> · ${s.review_count} student reviews</span>
+        </div>
+
+        <!-- Transit panel (hidden until toggled) -->
+        <div class="transit-panel" id="transit-panel-${s.id}"></div>
+      </div>
+
+      <div class="card-footer">
+        <a href="${s.wta_link}" target="_blank" rel="noopener" class="btn-wta">🚌 Plan Trip with WTA</a>
+        <div class="card-foot-row">
+          <button class="btn-sec" onclick="toggleTransit(${s.id})" id="transit-btn-${s.id}">🚌 Bus Routes</button>
+          <button class="btn-sec" onclick="openReviews(${s.id})">💬 Reviews (${revCount})</button>
+          ${s.website ? `<a href="${s.website}" target="_blank" rel="noopener" class="btn-sec">🔗 Site</a>` : ''}
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+/* ========================================================================
+   TRANSIT TOGGLE
+   ======================================================================== */
+function toggleTransit(storeId) {
+  const panel = document.getElementById(`transit-panel-${storeId}`);
+  const btn   = document.getElementById(`transit-btn-${storeId}`);
+  const isOpen = panel.classList.contains('open');
+  if (isOpen) {
+    panel.classList.remove('open');
+    panel.innerHTML = '';
+    btn.classList.remove('transit-active');
+    btn.textContent = '🚌 Bus Routes';
+  } else {
+    const store = STORES.find(s => s.id === storeId);
+    panel.innerHTML = transitHTML(store);
+    panel.classList.add('open');
+    btn.classList.add('transit-active');
+    btn.textContent = '✕ Hide Routes';
+  }
+}
+
+/* ========================================================================
+   LEAFLET LOAD ERROR HANDLER
+   Called by the onerror on the Leaflet <script> tag.
+   Stores the failure so initMap can show a graceful fallback.
+   ======================================================================== */
+window._leafletLoadError = function() {
+  window._leafletLoadFailed = true;
+  // If the map tab is already active when the error fires, show fallback immediately
+  _showMapFallback();
+};
+
+function _showMapFallback() {
+  const fb = document.getElementById('map-fallback');
+  const lm = document.getElementById('leaflet-map');
+  const sb = document.querySelector('.map-sidebar');
+  if (fb) { fb.style.display = 'flex'; }
+  if (lm) { lm.style.display = 'none'; }
+  if (sb) { sb.style.display = 'none'; }
+
+  // Render a compact store list as fallback content
+  const fbCards = document.getElementById('map-store-cards-fallback');
+  if (fbCards && !fbCards.innerHTML) {
+    fbCards.innerHTML = `
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:12px;">
+        All stores with coordinates — use the <strong>Store List</strong> tab to filter and browse.
+      </p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;text-align:left;">
+        ${STORES.map(s => `
+          <div style="background:white;border-radius:10px;padding:12px;box-shadow:0 1px 6px rgba(0,0,0,.08);">
+            <div style="font-weight:700;font-size:.88rem;margin-bottom:3px;">${s.name}</div>
+            <div style="font-size:.74rem;color:var(--muted);margin-bottom:6px;">📍 ${s.address}</div>
+            <div style="display:flex;gap:8px;font-size:.74rem;">
+              <span>🚌 ${s.bus_score}/10</span>
+              <span>🚶 ${s.walk_score}/10</span>
+              <span>⭐ ${s.student_rating}</span>
+            </div>
+            <a href="${s.wta_link}" target="_blank" rel="noopener"
+               style="display:block;margin-top:8px;background:var(--dark-blue);color:var(--white);
+                      padding:5px 10px;border-radius:6px;font-size:.74rem;font-weight:700;text-align:center;">
+              🚌 Plan Trip
+            </a>
+          </div>`).join('')}
+      </div>`;
+  }
+}
+
+/* ========================================================================
+   MAP VIEW — Leaflet
+   Fully guarded: if L is not defined (CDN blocked), shows a friendly fallback.
+   ======================================================================== */
+function initMap() {
+  if (state.mapInstance) return; // already initialised
+
+  // Guard: if Leaflet failed to load (CDN blocked), show fallback UI
+  if (window._leafletLoadFailed || typeof L === 'undefined') {
+    _showMapFallback();
+    return;
+  }
+
+  // Create the Leaflet map centred on Bellingham, WA
+  const map = L.map('leaflet-map', {
+    center: [48.755, -122.475],
+    zoom: 13,
+    zoomControl: true,
+  });
+  state.mapInstance = map;
+
+  // OpenStreetMap tiles (free, no API key needed)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // WWU campus boundary circle (approximate)
+  L.circle([48.7369, -122.4864], {
+    color: '#003F87', fillColor: '#007AC8', fillOpacity: 0.08,
+    weight: 2, dashArray: '6 4', radius: 700
+  }).addTo(map).bindTooltip('⚓ WWU Campus', { permanent: false });
+
+  // Place markers for every store
+  STORES.forEach(store => addMapMarker(store, map));
+
+  // Render sidebar list (all stores)
+  renderMapSidebar(STORES);
+}
+
+// Tier → marker colour (WWU palette)
+const MARKER_COLORS = {
+  1: '#16a34a', // budget  = green (stands out as best value)
+  2: '#003F87', // mid     = WWU dark blue
+  3: '#f5a623', // premium = gold
+};
+
+function addMapMarker(store, map) {
+  const color = MARKER_COLORS[store.price_tier] || '#3d6b56';
+  const hs = getHoursStatus(store);
+
+  // Custom DivIcon (rotated diamond/pin shape)
+  const icon = L.divIcon({
+    className: '',
+    iconSize: [32, 38],
+    iconAnchor: [16, 38],
+    popupAnchor: [0, -36],
+    html: `
+    <div style="
+      width:32px;height:32px;border-radius:50% 50% 50% 0;
+      background:${color};border:3px solid white;
+      transform:rotate(-45deg);
+      box-shadow:0 2px 8px rgba(0,0,0,.3);
+      display:flex;align-items:center;justify-content:center;
+    ">
+      <span style="transform:rotate(45deg);font-size:13px;">${store.ebt?'💳':'🛒'}</span>
+    </div>`
+  });
+
+  // Pop-up HTML
+  const popup = `
+  <div class="popup-body">
+    <div class="popup-name">${store.name}</div>
+    <div class="popup-addr">📍 ${store.address}</div>
+    <div class="popup-row">
+      <div class="popup-score">
+        <div class="popup-score-val ${scoreClass(store.bus_score)}">${store.bus_score}</div>
+        <div class="popup-score-lbl">Bus</div>
+      </div>
+      <div class="popup-score">
+        <div class="popup-score-val ${scoreClass(store.walk_score)}">${store.walk_score}</div>
+        <div class="popup-score-lbl">Walk</div>
+      </div>
+      <div class="popup-score">
+        <div class="popup-score-val">${store.student_rating}</div>
+        <div class="popup-score-lbl">Rating</div>
+      </div>
+    </div>
+    <div style="margin-bottom:8px;font-size:.76rem;">
+      ${store.ebt?'<span style="background:#dbeafe;color:#1d4ed8;padding:2px 7px;border-radius:100px;font-weight:700;font-size:.7rem;">💳 EBT</span> ':''} 
+      ${store.bulk?'<span style="background:#ede9fe;color:#6d28d9;padding:2px 7px;border-radius:100px;font-weight:700;font-size:.7rem;">⚖️ Bulk</span> ':''}
+      ${store.discount?'<span style="background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:100px;font-weight:700;font-size:.7rem;">🏷️ Discount</span>':''}
+    </div>
+    <div style="font-size:.72rem;margin-bottom:8px;color:${hs.status==='open'?'#15803d':'#b91c1c'};font-weight:600;">
+      ${hs.status==='open'?'🟢':'🔴'} ${hs.label}
+    </div>
+    <a href="${store.wta_link}" target="_blank" class="popup-btn">🚌 Plan Trip with WTA</a>
+  </div>`;
+
+  const marker = L.marker([store.lat, store.lng], { icon })
+    .addTo(map)
+    .bindPopup(popup, { maxWidth: 260 });
+
+  marker.on('click', () => {
+    selectMapStore(store.id);
+  });
+
+  state.mapMarkers[store.id] = marker;
+}
+
+function renderMapSidebar(stores) {
+  const list = document.getElementById('map-store-list');
+  const filtered = filteredStores();
+  const visibleIds = new Set(filtered.map(s => s.id));
+
+  list.innerHTML = STORES.map(store => {
+    const hs = getHoursStatus(store);
+    const dimmed = !visibleIds.has(store.id);
+    return `
+    <div class="map-store-item ${state.selectedMapStore===store.id?'selected':''} ${dimmed?'':''}\"
+      onclick="selectMapStore(${store.id})" id="map-item-${store.id}"
+      style="${dimmed?'opacity:.4;pointer-events:none':''}">
+      <div class="map-item-name">${store.name}</div>
+      <div class="map-item-meta">
+        <span class="map-item-score" style="color:${hs.status==='open'?'#15803d':'#b91c1c'}">
+          ${hs.status==='open'?'🟢 Open':'🔴 Closed'}
+        </span>
+        <span>🚌 ${store.bus_score}/10</span>
+        <span>⭐ ${store.student_rating}</span>
+      </div>
+      <div class="map-item-badges">
+        ${store.ebt?'<span style="background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:100px;font-size:.65rem;font-weight:700;">EBT</span>':''}
+        ${store.bulk?'<span style="background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:100px;font-size:.65rem;font-weight:700;">Bulk</span>':''}
+        ${store.discount?'<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:100px;font-size:.65rem;font-weight:700;">Discount</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectMapStore(storeId) {
+  if (!state.mapInstance) return; // map not initialised (Leaflet blocked)
+  state.selectedMapStore = storeId;
+  const store = STORES.find(s => s.id === storeId);
+  const marker = state.mapMarkers[storeId];
+  if (marker && state.mapInstance) {
+    state.mapInstance.flyTo([store.lat, store.lng], 15, { duration: 0.8 });
+    marker.openPopup();
+  }
+  // Update sidebar highlight
+  document.querySelectorAll('.map-store-item').forEach(el => el.classList.remove('selected'));
+  const item = document.getElementById(`map-item-${storeId}`);
+  if (item) { item.classList.add('selected'); item.scrollIntoView({ behavior:'smooth', block:'nearest' }); }
+}
+
+/* ========================================================================
+   PRICE COMPARE TABLE
+   Builds category-separated tables with colour-coded best/mid/higher cells.
+   ======================================================================== */
+function renderPriceTables() {
+  const container = document.getElementById('price-tables');
+
+  // Collect all unique store names that appear in pricing data
+  const storeNames = new Set();
+  Object.values(PRICE_DATA).forEach(items =>
+    items.forEach(item => Object.keys(item.prices).forEach(n => storeNames.add(n)))
+  );
+  // Preferred order (most relevant for students first)
+  const orderedStores = [
+    "Grocery Outlet","Walmart","Asia Grocery","La Michoacana",
+    "Trader Joe's","Fred Meyer","Co-op Downtown","Haggen",
+    "Safeway","Whole Foods","Co-op Cordata"
+  ].filter(n => storeNames.has(n));
+
+  let html = `<div class="price-key">Prices are per-unit estimates based on regular (non-sale) pricing. "—" = not available/not carried.</div>`;
+
+  Object.entries(PRICE_DATA).forEach(([category, items]) => {
+    // Determine which stores are actually in this category
+    const catStores = orderedStores.filter(name =>
+      items.some(item => item.prices[name] != null)
+    );
+
+    html += `<div class="category-section">
+      <div class="category-title">${category}</div>
+      <div class="price-table-wrap">
+        <table class="price-table">
+          <thead>
+            <tr>
+              <th style="min-width:160px">Item</th>
+              ${catStores.map(name => {
+                const store = STORES.find(s => s.name === name);
+                const tier  = store ? ["","$","$$","$$$"][store.price_tier] : '';
+                return `<th class="store-col-header">${name}<span class="store-type-mini">${tier}</span></th>`;
+              }).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => {
+              // Find min price across this row to colour-code
+              const prices = catStores.map(n => item.prices[n]).filter(p => p != null);
+              const min = Math.min(...prices);
+              const max = Math.max(...prices);
+
+              return `<tr>
+                <td>
+                  <div class="item-name">${item.item}</div>
+                  <div class="item-unit">${item.unit}</div>
+                </td>
+                ${catStores.map(name => {
+                  const p = item.prices[name];
+                  if (p == null) return `<td style="text-align:center"><span class="price-na">—</span></td>`;
+                  let cls = 'price-higher';
+                  if (p === min) cls = 'price-best';
+                  else if (p <= min * 1.25) cls = 'price-mid';
+                  return `<td style="text-align:center"><span class="price-cell ${cls}">$${p.toFixed(2)}</span></td>`;
+                }).join('')}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+/* ========================================================================
+   REVIEWS MODAL
+   ======================================================================== */
+function openReviews(storeId) {
+  const store = STORES.find(s => s.id === storeId);
+  state.currentStoreId = storeId;
+  state.selectedRating = 0;
+  document.getElementById('modal-title').textContent = store.name;
+  document.getElementById('modal-sub').textContent   = `${store.address} · WWU Student Reviews`;
+  document.getElementById('r-name').value   = '';
+  document.getElementById('r-major').value  = '';
+  document.getElementById('r-text').value   = '';
+  document.querySelectorAll('.star-btn').forEach(b => b.classList.remove('sel'));
+  renderReviewList(storeId);
+  const overlay = document.getElementById('reviews-modal');
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  document.getElementById('reviews-modal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderReviewList(storeId) {
+  const reviews = REVIEWS[storeId] || [];
+  const list = document.getElementById('reviews-list');
+  if (!reviews.length) {
+    list.innerHTML = '<p style="color:var(--muted);font-size:.88rem;text-align:center;padding:16px 0;">No reviews yet — be the first!</p>';
+    return;
+  }
+  list.innerHTML = reviews.map(r => {
+    const init = r.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+    return `
+    <div class="review-item">
+      <div class="review-hdr">
+        <div class="reviewer-info">
+          <div class="reviewer-av">${init}</div>
+          <div>
+            <div class="reviewer-name">${r.name} <span class="reviewer-badge">WWU</span></div>
+            ${r.major?`<div class="reviewer-major">${r.major}</div>`:''}
+          </div>
+        </div>
+        <div>
+          <div class="review-stars">${starsHTML(r.rating)}</div>
+          <div class="review-date">${r.date}</div>
+        </div>
+      </div>
+      <p class="review-text">${r.text}</p>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('submit-review').addEventListener('click', () => {
+  const name   = document.getElementById('r-name').value.trim();
+  const major  = document.getElementById('r-major').value.trim();
+  const text   = document.getElementById('r-text').value.trim();
+  const rating = state.selectedRating;
+  if (!name)        { showToast('Please enter your name'); return; }
+  if (!rating)      { showToast('Please select a star rating'); return; }
+  if (text.length<10){ showToast('Write at least 10 characters'); return; }
+  if (!REVIEWS[state.currentStoreId]) REVIEWS[state.currentStoreId] = [];
+  REVIEWS[state.currentStoreId].unshift({ name, major, rating, text, date:"Just now" });
+  const store = STORES.find(s => s.id === state.currentStoreId);
+  store.review_count++;
+  renderReviewList(state.currentStoreId);
+  renderCards();
+  document.getElementById('r-name').value  = '';
+  document.getElementById('r-major').value = '';
+  document.getElementById('r-text').value  = '';
+  document.querySelectorAll('.star-btn').forEach(b => b.classList.remove('sel'));
+  state.selectedRating = 0;
+  showToast('✅ Review submitted! Thanks for helping WWU students.');
+});
+
+document.querySelectorAll('.star-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = parseInt(btn.dataset.val);
+    state.selectedRating = val;
+    document.querySelectorAll('.star-btn').forEach((b,i) => b.classList.toggle('sel', i < val));
+  });
+});
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('reviews-modal').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+
+/* ========================================================================
+   TAB SWITCHING
+   ======================================================================== */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    state.tab = tab;
+
+    // Update button states
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Show/hide panels
+    document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`panel-${tab}`).classList.add('active');
+
+    // Show/hide quick filter bar (not shown on price tab)
+    document.getElementById('quick-filter-bar').style.display = tab === 'price' ? 'none' : '';
+
+    // Lazy-init map on first switch
+    if (tab === 'map') {
+      // Slight delay to let the panel become visible before Leaflet measures it
+      setTimeout(() => {
+        initMap(); // internally guards against L being undefined
+        if (state.mapInstance) {
+          state.mapInstance.invalidateSize();
+          renderMapSidebar(STORES);
+        }
+      }, 80);
+    }
+
+    // Render price tables on first switch
+    if (tab === 'price') {
+      renderPriceTables();
+    }
+  });
+});
+
+/* ========================================================================
+   QUICK FILTER CHIPS
+   ======================================================================== */
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip').forEach(c => { c.classList.remove('active'); c.setAttribute('aria-pressed','false'); });
+    chip.classList.add('active');
+    chip.setAttribute('aria-pressed','true');
+    state.quickFilter = chip.dataset.quick;
+    renderCards();
+    if (state.mapInstance) renderMapSidebar(STORES);
+  });
+});
+
+/* ========================================================================
+   ADVANCED FILTERS
+   ======================================================================== */
+document.getElementById('adv-btn').addEventListener('click', () => {
+  const panel = document.getElementById('adv-panel');
+  const isOpen = panel.classList.toggle('open');
+  document.getElementById('adv-btn').setAttribute('aria-expanded', isOpen);
+});
+
+// Build food tag buttons
+const foodFtags = document.getElementById('food-ftags');
+FOOD_TAGS.forEach(opt => {
+  const btn = document.createElement('button');
+  btn.className = 'ftag'; btn.dataset.filter = opt.key; btn.textContent = opt.label;
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('active');
+    btn.classList.contains('active') ? state.activeFilters.add(opt.key) : state.activeFilters.delete(opt.key);
+  });
+  foodFtags.appendChild(btn);
+});
+
+// Feature + price filter tags
+document.querySelectorAll('.ftag[data-filter]').forEach(tag => {
+  tag.addEventListener('click', () => {
+    tag.classList.toggle('active');
+    const f = tag.dataset.filter;
+    tag.classList.contains('active') ? state.activeFilters.add(f) : state.activeFilters.delete(f);
+  });
+});
+
+document.getElementById('apply-adv').addEventListener('click', () => {
+  renderCards();
+  document.getElementById('adv-panel').classList.remove('open');
+});
+document.getElementById('clear-adv').addEventListener('click', () => {
+  state.activeFilters.clear();
+  document.querySelectorAll('.ftag').forEach(t => t.classList.remove('active'));
+  renderCards();
+});
+
+/* ========================================================================
+   SEARCH
+   ======================================================================== */
+let searchTO;
+document.getElementById('search-input').addEventListener('input', e => {
+  clearTimeout(searchTO);
+  searchTO = setTimeout(() => {
+    state.search = e.target.value.trim();
+    renderCards();
+  }, 200);
+});
+
+/* ========================================================================
+   INIT
+   ======================================================================== */
+renderCards();
+</script>
+</body>
+</html>
