@@ -27,6 +27,8 @@
       --dark-blue-deep:  #002d63;   /* darker shade for hover states         */
       --blue-lt:         #d0eaf8;   /* very light blue for subtle backgrounds */
       --blue-mid:        #005fa0;   /* mid blue for hover on --blue elements  */
+      --blue-on-dark:    #00b9ff;   /* SC 1.4.3: blue text on --dark-blue bg (4.55:1) */
+      --blue-on-light:   #005fa0;   /* SC 1.4.3: blue text on --blue-lt bg (4.76:1) */
       --off-white:       #f4f7fb;   /* near-white page background             */
       --warm-white:      #eaf1f9;   /* light blue-tinted warm surface         */
       --text:            #0a1628;   /* near-black with blue undertone         */
@@ -84,7 +86,8 @@
       font-family: var(--font-d); font-size: 1.3rem; font-weight: 500;
       color: var(--white); letter-spacing: -.02em;
     }
-    .nav-logo-text span { color: var(--blue); font-style: italic; }
+    /* SC 1.4.3: --blue (#007ac8) on --dark-blue (#003f87) is only 2.24:1; use --blue-on-dark */
+    .nav-logo-text span { color: var(--blue-on-dark); font-style: italic; }
     .nav-links { display: flex; align-items: center; gap: 4px; }
     .nav-links a {
       color: rgba(255,255,255,.75); font-size: .86rem; font-weight: 500;
@@ -226,10 +229,12 @@
     .search-input {
       padding: 9px 14px 9px 36px; border: 1.5px solid rgba(0,63,135,.15);
       border-radius: var(--r-sm); font-family: var(--font-b); font-size: .88rem;
-      background: var(--white); outline: none; transition: border-color var(--t);
+      /* SC 2.4.7: removed outline:none — :focus-visible provides keyboard focus ring */
+      background: var(--white); transition: border-color var(--t);
       min-width: 220px;
     }
-    .search-input:focus { border-color: var(--blue); }
+    .search-input:focus { border-color: var(--blue); outline: none; }
+    .search-input:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
     .results-count { font-size: .86rem; color: var(--muted); font-weight: 500; }
 
     .adv-panel {
@@ -292,7 +297,8 @@
     .type-badge {
       display: inline-block; font-size: .7rem; font-weight: 600;
       letter-spacing: .05em; text-transform: uppercase;
-      background: var(--blue-lt); color: var(--blue);
+      /* SC 1.4.3: --blue on --blue-lt is 3.63:1; use --blue-on-light (4.76:1) */
+      background: var(--blue-lt); color: var(--blue-on-light);
       padding: 3px 9px; border-radius: 100px; margin-bottom: 6px;
     }
     .card-addr { display: flex; align-items: center; gap: 4px; font-size: .8rem; color: var(--muted); margin-bottom: 9px; }
@@ -321,14 +327,16 @@
 
     /* Food tags */
     .food-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-    .food-tag { font-size: .71rem; padding: 2px 8px; background: var(--blue-lt); color: var(--blue); border-radius: 100px; font-weight: 500; }
+    /* SC 1.4.3: --blue on --blue-lt is 3.63:1; use --blue-on-light (4.76:1) */
+    .food-tag { font-size: .71rem; padding: 2px 8px; background: var(--blue-lt); color: var(--blue-on-light); border-radius: 100px; font-weight: 500; }
 
     /* Scores */
     .card-scores { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-bottom: 13px; }
     .score-item { background: var(--off-white); border-radius: var(--r-sm); padding: 9px 6px; text-align: center; border: 1px solid rgba(0,63,135,.08); }
     .score-icon { font-size: 1rem; margin-bottom: 2px; }
     .score-val { font-family: var(--font-d); font-size: 1.05rem; font-weight: 700; line-height: 1; }
-    .good { color: #16a34a; } .ok { color: #ca8a04; } .poor { color: #dc2626; }
+    /* SC 1.4.3: darkened to meet 4.5:1 on --off-white (#f4f7fb) background */
+    .good { color: #11833a; } .ok { color: #916300; } .poor { color: #d12424; }
     .score-lbl { font-size: .63rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
 
     /* Rating */
@@ -518,13 +526,15 @@
     .about-section {
       background: var(--dark-blue); color: var(--white); padding: 64px 20px;
     }
-    .about-eyebrow { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--blue); margin-bottom: 10px; }
+    /* SC 1.4.3: --blue on --dark-blue is 2.24:1; use --blue-on-dark (4.55:1) */
+    .about-eyebrow { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--blue-on-dark); margin-bottom: 10px; }
     .about-title { font-family: var(--font-d); font-size: clamp(1.7rem,3vw,2.4rem); font-weight: 500; letter-spacing: -.02em; margin-bottom: 44px; }
     .about-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
     .about-card { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); border-radius: var(--r-md); padding: 22px; }
     .about-icon { font-size: 1.8rem; margin-bottom: 12px; }
     .about-card-title { font-size: .95rem; font-weight: 600; margin-bottom: 6px; }
-    .about-card-text { font-size: .84rem; color: rgba(255,255,255,.62); line-height: 1.6; }
+    /* SC 1.4.3: .62 alpha is 4.33:1 on card bg; raised to .75 (~5.5:1) */
+    .about-card-text { font-size: .84rem; color: rgba(255,255,255,.75); line-height: 1.6; }
 
     /* =====================================================================
        REVIEWS MODAL
@@ -571,9 +581,11 @@
     .r-input {
       flex: 1; padding: 8px 12px; border: 1.5px solid rgba(0,0,0,.1);
       border-radius: var(--r-sm); font-family: var(--font-b); font-size: .86rem;
-      outline: none; transition: border-color var(--t);
+      /* SC 2.4.7: removed outline:none */
+      transition: border-color var(--t);
     }
-    .r-input:focus { border-color: var(--blue); }
+    .r-input:focus { border-color: var(--blue); outline: none; }
+    .r-input:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
     textarea.r-input { width: 100%; resize: vertical; min-height: 85px; margin-bottom: 9px; }
     .btn-sub-review {
       background: var(--dark-blue); color: var(--white); padding: 9px 20px;
@@ -619,15 +631,51 @@
       padding: 28px 20px; text-align: center;
     }
     .footer-logo { font-family: var(--font-d); font-size: 1.15rem; color: rgba(255,255,255,.85); margin-bottom: 6px; font-style: italic; }
-    .footer-text { font-size: .8rem; }
+    /* SC 1.4.3: .5 alpha on --dark-blue-deep is 4.44:1 (barely fails); raised to .62 */
+    .footer-text { font-size: .8rem; color: rgba(255,255,255,.62); }
     .footer-links { display: flex; gap: 14px; justify-content: center; margin-top: 14px; }
-    .footer-links a { font-size: .78rem; color: rgba(255,255,255,.4); transition: color var(--t); }
+    /* SC 1.4.3: .4 alpha on --dark-blue-deep is 3.35:1; raised to .6 (well above 4.5:1) */
+    .footer-links a { font-size: .78rem; color: rgba(255,255,255,.6); transition: color var(--t); }
     .footer-links a:hover { color: var(--blue); }
-    .footer-disc { margin-top: 14px; font-size: .73rem; color: rgba(255,255,255,.25); max-width: 580px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+    /* SC 1.4.3: .25 alpha on --dark-blue-deep is 2.14:1; raised to .6 */
+    .footer-disc { margin-top: 14px; font-size: .73rem; color: rgba(255,255,255,.6); max-width: 580px; margin-left: auto; margin-right: auto; line-height: 1.6; }
 
     /* =====================================================================
        RESPONSIVE
        ===================================================================== */
+    /* =====================================================================
+       ACCESSIBILITY UTILITIES
+       ===================================================================== */
+    /* SC 2.4.1 Skip navigation link */
+    .skip-link {
+      position: absolute; top: -100%; left: 0;
+      background: var(--dark-blue); color: var(--white);
+      padding: 10px 18px; font-size: .9rem; font-weight: 600;
+      z-index: 9999; text-decoration: underline;
+      border-radius: 0 0 var(--r-sm) 0;
+    }
+    .skip-link:focus { top: 0; outline: 3px solid var(--blue-on-dark); outline-offset: 2px; }
+
+    /* Visually hidden but readable by screen readers */
+    .sr-only {
+      position: absolute; width: 1px; height: 1px;
+      padding: 0; margin: -1px; overflow: hidden;
+      clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+
+    /* SC 2.4.7 Visible focus — apply to all keyboard-focusable elements */
+    :focus-visible {
+      outline: 3px solid var(--blue);
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+    /* Ensure dark backgrounds get a visible focus ring too */
+    nav :focus-visible,
+    .about-section :focus-visible,
+    footer :focus-visible {
+      outline-color: var(--blue-on-dark);
+    }
+
     @media (max-width: 800px) {
       .hero-inner { grid-template-columns: 1fr; }
       .hero-stats { flex-direction: row; }
@@ -646,10 +694,14 @@
 </head>
 <body>
 
+<!-- SC 2.4.1: Skip navigation link — visually hidden until focused -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <!-- ======================================================================
      NAV
      ====================================================================== -->
-<nav>
+<!-- SC 4.1.2: aria-label distinguishes this nav landmark -->
+<nav aria-label="Main navigation">
   <div class="nav-inner">
     <a href="#" class="nav-logo">
       <div class="nav-logo-mark">⚓</div>
@@ -662,6 +714,9 @@
     </div>
   </div>
 </nav>
+
+<!-- SC 1.3.6: <main> landmark wraps all primary page content -->
+<main id="main-content">
 
 <!-- ======================================================================
      HERO
@@ -688,14 +743,15 @@
 <!-- ======================================================================
      TAB BAR — List / Map / Price Compare
      ====================================================================== -->
+<!-- SC 4.1.2: role="tablist" + role="tab" + aria-selected + aria-controls -->
 <div class="tab-bar" id="stores">
-  <div class="tab-bar-inner">
-    <button class="tab-btn active" data-tab="list">🗂 Store List</button>
-    <div class="tab-divider"></div>
-    <button class="tab-btn" data-tab="map">🗺 Map View</button>
-    <div class="tab-divider"></div>
-    <button class="tab-btn" data-tab="price">💰 Price Compare</button>
-    <div class="tab-spacer"></div>
+  <div class="tab-bar-inner" role="tablist" aria-label="Store views">
+    <button class="tab-btn active" data-tab="list" role="tab" id="tab-list" aria-selected="true" aria-controls="panel-list">🗂 Store List</button>
+    <div class="tab-divider" aria-hidden="true"></div>
+    <button class="tab-btn" data-tab="map" role="tab" id="tab-map" aria-selected="false" aria-controls="panel-map">🗺 Map View</button>
+    <div class="tab-divider" aria-hidden="true"></div>
+    <button class="tab-btn" data-tab="price" role="tab" id="tab-price" aria-selected="false" aria-controls="panel-price">💰 Price Compare</button>
+    <div class="tab-spacer" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -703,42 +759,48 @@
      QUICK FILTER BAR (visible for List + Map tabs)
      ====================================================================== -->
 <div class="filter-bar" id="quick-filter-bar">
-  <div class="filter-bar-inner">
-    <button class="chip active" data-quick="all">All Stores</button>
-    <div class="chip-div"></div>
-    <button class="chip" data-quick="ebt">💳 EBT</button>
-    <button class="chip" data-quick="bulk">⚖️ Bulk</button>
-    <button class="chip" data-quick="discount">🏷️ Discount</button>
-    <button class="chip" data-quick="bus">🚌 Bus-Friendly</button>
-    <button class="chip" data-quick="walk">🚶 Walkable</button>
-    <div class="chip-div"></div>
-    <button class="chip" data-quick="produce">🥦 Produce</button>
-    <button class="chip" data-quick="halal">🥩 Halal</button>
-    <button class="chip" data-quick="international">🌍 International</button>
-    <button class="chip" data-quick="asian">🍜 Asian</button>
-    <button class="chip" data-quick="latin">🌮 Latin</button>
-    <button class="chip" data-quick="organic">🌱 Organic</button>
-    <button class="chip" data-quick="vegan">🥗 Vegan</button>
-    <button class="chip" data-quick="open">🟢 Open Now</button>
+  <!-- SC 4.1.2: aria-pressed on toggle buttons; aria-hidden on decorative separators -->
+  <div class="filter-bar-inner" role="group" aria-label="Quick filters">
+    <button class="chip active" data-quick="all" aria-pressed="true">All Stores</button>
+    <div class="chip-div" aria-hidden="true"></div>
+    <button class="chip" data-quick="ebt" aria-pressed="false">💳 EBT</button>
+    <button class="chip" data-quick="bulk" aria-pressed="false">⚖️ Bulk</button>
+    <button class="chip" data-quick="discount" aria-pressed="false">🏷️ Discount</button>
+    <button class="chip" data-quick="bus" aria-pressed="false">🚌 Bus-Friendly</button>
+    <button class="chip" data-quick="walk" aria-pressed="false">🚶 Walkable</button>
+    <div class="chip-div" aria-hidden="true"></div>
+    <button class="chip" data-quick="produce" aria-pressed="false">🥦 Produce</button>
+    <button class="chip" data-quick="halal" aria-pressed="false">🥩 Halal</button>
+    <button class="chip" data-quick="international" aria-pressed="false">🌍 International</button>
+    <button class="chip" data-quick="asian" aria-pressed="false">🍜 Asian</button>
+    <button class="chip" data-quick="latin" aria-pressed="false">🌮 Latin</button>
+    <button class="chip" data-quick="organic" aria-pressed="false">🌱 Organic</button>
+    <button class="chip" data-quick="vegan" aria-pressed="false">🥗 Vegan</button>
+    <button class="chip" data-quick="open" aria-pressed="false">🟢 Open Now</button>
   </div>
 </div>
 
 <!-- ======================================================================
      LIST VIEW
      ====================================================================== -->
-<div class="view-panel active" id="panel-list">
+<!-- SC 4.1.2: role="tabpanel" links each panel to its controlling tab button -->
+<div class="view-panel active" id="panel-list" role="tabpanel" aria-labelledby="tab-list">
   <div class="list-view">
     <div class="container">
       <!-- Advanced filter controls -->
       <div class="adv-filter-row">
         <div class="adv-filter-left">
-          <button class="btn-adv" id="adv-btn">⚙️ Advanced Filters</button>
+          <!-- SC 4.1.2: aria-expanded + aria-controls for the collapsible panel -->
+          <button class="btn-adv" id="adv-btn" aria-expanded="false" aria-controls="adv-panel">⚙️ Advanced Filters</button>
           <div class="search-wrap">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon" aria-hidden="true">🔍</span>
+            <!-- SC 1.3.1 / 3.3.2: visible label via .sr-only (placeholder alone is not sufficient) -->
+            <label for="search-input" class="sr-only">Search stores</label>
             <input type="search" class="search-input" id="search-input" placeholder="Search stores…" />
           </div>
         </div>
-        <div class="results-count" id="results-count">Showing all 19 stores</div>
+        <!-- SC 4.1.3: aria-live announces filter result count to screen readers -->
+        <div class="results-count" id="results-count" aria-live="polite" aria-atomic="true">Showing all 19 stores</div>
       </div>
 
       <div class="adv-panel" id="adv-panel">
@@ -780,7 +842,7 @@
 <!-- ======================================================================
      MAP VIEW
      ====================================================================== -->
-<div class="view-panel" id="panel-map">
+<div class="view-panel" id="panel-map" role="tabpanel" aria-labelledby="tab-map">
   <div class="map-view active" id="map-view-inner">
     <!-- Shown when Leaflet CDN is blocked (e.g. inside a sandboxed iframe) -->
     <div id="map-fallback" style="display:none; flex:1; align-items:center; justify-content:center;
@@ -811,7 +873,7 @@
 <!-- ======================================================================
      PRICE COMPARE VIEW
      ====================================================================== -->
-<div class="view-panel" id="panel-price">
+<div class="view-panel" id="panel-price" role="tabpanel" aria-labelledby="tab-price">
   <div class="price-view">
     <div class="container">
       <div class="price-header">
@@ -850,33 +912,46 @@
   </div>
 </section>
 
+</main><!-- end #main-content -->
+
 <!-- ======================================================================
      REVIEWS MODAL
      ====================================================================== -->
-<div class="modal-overlay" id="reviews-modal">
+<!-- SC 4.1.2: role="dialog" + aria-modal + aria-labelledby for screen readers -->
+<div class="modal-overlay" id="reviews-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal">
     <div class="modal-header">
       <div>
         <h2 class="modal-title" id="modal-title">Store Reviews</h2>
         <p class="modal-sub" id="modal-sub">WWU Student Reviews</p>
       </div>
-      <button class="modal-close" id="modal-close">✕</button>
+      <!-- SC 4.1.2: descriptive aria-label since ✕ alone is ambiguous -->
+      <button class="modal-close" id="modal-close" aria-label="Close reviews dialog">✕</button>
     </div>
     <div class="modal-body">
       <div class="review-form-section">
-        <div class="form-lbl">Leave a WWU Student Review</div>
-        <div class="wwu-notice">⚓ Reviews are for Western Washington University Vikings</div>
-        <div class="star-select" id="star-select">
-          <button class="star-btn" data-val="1">★</button>
-          <button class="star-btn" data-val="2">★</button>
-          <button class="star-btn" data-val="3">★</button>
-          <button class="star-btn" data-val="4">★</button>
-          <button class="star-btn" data-val="5">★</button>
-        </div>
+        <!-- SC 1.3.1: visible heading for the form section -->
+        <p class="form-lbl" id="review-form-heading">Leave a WWU Student Review</p>
+        <div class="wwu-notice" role="note">⚓ Reviews are for Western Washington University Vikings</div>
+        <!-- SC 4.1.2: star rating group with accessible label per button -->
+        <fieldset style="border:none;padding:0;margin:0 0 12px;">
+          <legend class="sr-only">Your star rating</legend>
+          <div class="star-select" id="star-select">
+            <button class="star-btn" data-val="1" aria-label="1 star" aria-pressed="false">★</button>
+            <button class="star-btn" data-val="2" aria-label="2 stars" aria-pressed="false">★</button>
+            <button class="star-btn" data-val="3" aria-label="3 stars" aria-pressed="false">★</button>
+            <button class="star-btn" data-val="4" aria-label="4 stars" aria-pressed="false">★</button>
+            <button class="star-btn" data-val="5" aria-label="5 stars" aria-pressed="false">★</button>
+          </div>
+        </fieldset>
+        <!-- SC 1.3.1 / 3.3.2: explicit <label> elements for each input -->
         <div class="name-row">
+          <label for="r-name" class="sr-only">Your name</label>
           <input type="text" class="r-input" id="r-name" placeholder="Your name (e.g. Alex W.)" maxlength="40" />
+          <label for="r-major" class="sr-only">Your major (optional)</label>
           <input type="text" class="r-input" id="r-major" placeholder="Major (optional)" maxlength="40" />
         </div>
+        <label for="r-text" class="sr-only">Your review</label>
         <textarea class="r-input" id="r-text" placeholder="Prices, selection, bus route, EBT checkout…" maxlength="400"></textarea>
         <button class="btn-sub-review" id="submit-review">Submit Review</button>
       </div>
@@ -1380,17 +1455,19 @@ const scoreClass = v => v >= 8 ? "good" : v >= 6 ? "ok" : "poor";
 
 function starsHTML(rating, size = 1) {
   const full = Math.floor(rating), half = rating % 1 >= 0.5;
-  let s = '<div class="stars">';
-  for (let i = 0; i < full; i++)  s += '<span class="star on">★</span>';
-  if (half) s += '<span class="star on" style="opacity:.55">★</span>';
-  for (let i = 0; i < (5 - full - (half?1:0)); i++) s += '<span class="star off">★</span>';
+  // SC 1.1.1 / 4.1.2: aria-label on container gives screen readers the numeric value
+  let s = `<div class="stars" aria-label="${rating} out of 5 stars" role="img">`;
+  for (let i = 0; i < full; i++)  s += '<span class="star on" aria-hidden="true">★</span>';
+  if (half) s += '<span class="star on" aria-hidden="true" style="opacity:.55">★</span>';
+  for (let i = 0; i < (5 - full - (half?1:0)); i++) s += '<span class="star off" aria-hidden="true">★</span>';
   return s + '</div>';
 }
 
 function priceTierHTML(tier) {
   const labels = ["","$","$$","$$$"];
-  return `<div class="price-tier" title="Price tier: ${labels[tier]}">` +
-    [1,2,3].map(i=>`<span class="${i>tier?'dim':''}">${'$'}</span>`).join('') + '</div>';
+  // SC 4.1.2: aria-label replaces title (title only shows on hover, not reliable for AT)
+  return `<div class="price-tier" aria-label="Price tier: ${labels[tier]}">` +
+    [1,2,3].map(i=>`<span class="${i>tier?'dim':''}" aria-hidden="true">${'$'}</span>`).join('') + '</div>';
 }
 
 function stripeClass(tier) { return ["","stripe-budget","stripe-mid","stripe-premium"][tier]; }
@@ -1501,7 +1578,8 @@ function renderCards() {
         <div class="card-top">
           <div>
             <div class="type-badge">${s.type}</div>
-            <h2 class="card-name">${s.name}</h2>
+            <!-- SC 1.3.1: h3 under h1 hero + h2 section headings -->
+            <h3 class="card-name">${s.name}</h3>
           </div>
           ${priceTierHTML(s.price_tier)}
         </div>
@@ -1738,13 +1816,16 @@ function renderMapSidebar(stores) {
   const filtered = filteredStores();
   const visibleIds = new Set(filtered.map(s => s.id));
 
+  // SC 4.1.2: use <button> so map sidebar items are keyboard-operable
   list.innerHTML = STORES.map(store => {
     const hs = getHoursStatus(store);
     const dimmed = !visibleIds.has(store.id);
     return `
-    <div class="map-store-item ${state.selectedMapStore===store.id?'selected':''} ${dimmed?'':''}\"
+    <button class="map-store-item ${state.selectedMapStore===store.id?'selected':''}"
       onclick="selectMapStore(${store.id})" id="map-item-${store.id}"
-      style="${dimmed?'opacity:.4;pointer-events:none':''}">
+      ${dimmed?'disabled aria-disabled="true" style="opacity:.4;"':''}
+      style="width:100%;text-align:left;background:none;border:none;cursor:pointer;${dimmed?'opacity:.4;':''}"
+      aria-pressed="${state.selectedMapStore===store.id?'true':'false'}">
       <div class="map-item-name">${store.name}</div>
       <div class="map-item-meta">
         <span class="map-item-score" style="color:${hs.status==='open'?'#15803d':'#b91c1c'}">
@@ -1758,7 +1839,7 @@ function renderMapSidebar(stores) {
         ${store.bulk?'<span style="background:#ede9fe;color:#6d28d9;padding:1px 6px;border-radius:100px;font-size:.65rem;font-weight:700;">Bulk</span>':''}
         ${store.discount?'<span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:100px;font-size:.65rem;font-weight:700;">Discount</span>':''}
       </div>
-    </div>`;
+    </button>`;
   }).join('');
 }
 
@@ -1856,21 +1937,32 @@ function openReviews(storeId) {
   const store = STORES.find(s => s.id === storeId);
   state.currentStoreId = storeId;
   state.selectedRating = 0;
+  // SC 2.4.3: remember which element triggered the modal so we can restore focus on close
+  state.modalOpener = document.activeElement;
   document.getElementById('modal-title').textContent = store.name;
   document.getElementById('modal-sub').textContent   = `${store.address} · WWU Student Reviews`;
   document.getElementById('r-name').value   = '';
   document.getElementById('r-major').value  = '';
   document.getElementById('r-text').value   = '';
-  document.querySelectorAll('.star-btn').forEach(b => b.classList.remove('sel'));
+  document.querySelectorAll('.star-btn').forEach(b => {
+    b.classList.remove('sel');
+    b.setAttribute('aria-pressed', 'false');
+  });
   renderReviewList(storeId);
   const overlay = document.getElementById('reviews-modal');
   overlay.classList.add('open');
   document.body.style.overflow = 'hidden';
+  // SC 2.4.3: move focus into the dialog
+  setTimeout(() => document.getElementById('modal-close').focus(), 50);
 }
 
 function closeModal() {
   document.getElementById('reviews-modal').classList.remove('open');
   document.body.style.overflow = '';
+  // SC 2.4.3: return focus to the element that opened the modal
+  if (state.modalOpener && state.modalOpener.focus) {
+    state.modalOpener.focus();
+  }
 }
 
 function renderReviewList(storeId) {
@@ -1928,7 +2020,11 @@ document.querySelectorAll('.star-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const val = parseInt(btn.dataset.val);
     state.selectedRating = val;
-    document.querySelectorAll('.star-btn').forEach((b,i) => b.classList.toggle('sel', i < val));
+    // SC 4.1.2: keep aria-pressed in sync with visual selected state
+    document.querySelectorAll('.star-btn').forEach((b, i) => {
+      b.classList.toggle('sel', i < val);
+      b.setAttribute('aria-pressed', i < val ? 'true' : 'false');
+    });
   });
 });
 
@@ -1944,9 +2040,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     state.tab = tab;
 
-    // Update button states
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    // SC 4.1.2: Update button states including aria-selected
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected', 'false');
+    });
     btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
 
     // Show/hide panels
     document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
